@@ -146,8 +146,8 @@ export function Migration() {
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1 sm:mb-2">数据迁移</h1>
-        <p className="text-sm text-[var(--text-secondary)]">自由导入导出你的笔记，数据完全自主</p>
+        <h1 className="typo-title mb-1 sm:mb-2">数据迁移</h1>
+        <p className="typo-body">自由导入导出你的笔记，数据完全自主</p>
       </div>
 
       {/* Tab 切换 */}
@@ -186,8 +186,8 @@ export function Migration() {
                         <Icon size={20} style={{ color: src.color }} />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="font-semibold text-[var(--text-primary)] text-sm sm:text-base">{src.label}</h3>
-                        <p className="text-xs text-[var(--text-secondary)]">{src.desc}</p>
+                        <h3 className="typo-section">{src.label}</h3>
+                        <p className="typo-meta">{src.desc}</p>
                       </div>
                     </div>
                     <input
@@ -215,7 +215,7 @@ export function Migration() {
               {importing && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="glass-card p-4 mb-4 flex items-center gap-3">
                   <RefreshCw size={18} className="animate-spin text-[var(--accent-mint)]" />
-                  <span className="text-sm text-[var(--text-secondary)]">正在导入...</span>
+                  <span className="typo-body">正在导入...</span>
                 </motion.div>
               )}
               {importResult && (
@@ -228,7 +228,7 @@ export function Migration() {
                     )}
                     <h3 className="font-semibold text-sm sm:text-base">导入结果</h3>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
+                  <p className="typo-body">
                     成功导入 {importResult.imported} 条, 失败 {importResult.failed} 条
                   </p>
                   {importResult.errors.length > 0 && (
@@ -259,8 +259,8 @@ export function Migration() {
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2" style={{ background: `${fmt.color}20` }}>
                       <Icon size={20} style={{ color: fmt.color }} />
                     </div>
-                    <h3 className="font-semibold text-sm text-[var(--text-primary)]">{fmt.label}</h3>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">{fmt.ext}</p>
+                    <h3 className="typo-section">{fmt.label}</h3>
+                    <p className="typo-meta mt-0.5">{fmt.ext}</p>
                   </motion.button>
                 );
               })}
@@ -292,7 +292,7 @@ export function Migration() {
                       }}
                       className="accent-[var(--accent-mint)] shrink-0"
                     />
-                    <span className="text-sm text-[var(--text-primary)] truncate">{n.title || '无标题'}</span>
+                    <span className="typo-label truncate">{n.title || '无标题'}</span>
                   </label>
                 ))}
               </div>

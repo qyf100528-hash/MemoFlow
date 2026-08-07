@@ -30,6 +30,7 @@ export class BaiduAdapter implements CloudAdapter {
         autoSync: false,
         syncInterval: 30,
         remotePath: '/MemoFlow/',
+        sortOrder: Date.now(),
       };
     }
     // 启动 OAuth 流程

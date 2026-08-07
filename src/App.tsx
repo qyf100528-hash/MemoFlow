@@ -21,10 +21,9 @@ const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; 
   sunset: { primary: '#fb923c', secondary: '#f43f5e', gradient: 'linear-gradient(135deg, #fb923c, #f43f5e)' },
   rose:   { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #a855f7)' },
   violet: { primary: '#a78bfa', secondary: '#7c3aed', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
-  custom: { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #c084fc)' },
 };
 
-// 背景色预设 — 6 种，与重点色同选项，可互相搭配
+// 背景色预设 — 5 种，仅 custom 模式下使用
 const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string }; light: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string } }> = {
   mint: {
     dark:  { primary: '#0a1418', secondary: '#0f1a1e', tertiary: '#152227', glowPrimary: '#34d399', glowSecondary: '#2dd4bf' },
@@ -46,11 +45,12 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     dark:  { primary: '#0e0a1a', secondary: '#130f22', tertiary: '#191530', glowPrimary: '#a78bfa', glowSecondary: '#7c3aed' },
     light: { primary: '#f4f0fb', secondary: '#ffffff', tertiary: '#ebe6f6', glowPrimary: '#c4b5fd', glowSecondary: '#ddd6fe' },
   },
-  custom: {
-    dark:  { primary: '#0a1a24', secondary: '#0f202e', tertiary: '#142838', glowPrimary: '#06b6d4', glowSecondary: '#3b82f6' },
-    light: { primary: '#eef5fb', secondary: '#ffffff', tertiary: '#e0ecf6', glowPrimary: '#22d3ee', glowSecondary: '#60a5fa' },
-  },
 };
+
+// 纯黑背景 — dark 模式直接使用
+const PURE_DARK = { primary: '#000000', secondary: '#0a0a0a', tertiary: '#141414', glowPrimary: '#3a3a3c', glowSecondary: '#48484a' };
+// 浅色背景 — Apple Notes 风格分层白：暖白底 + 纯白卡片层 + 柔和光晕，营造空气感
+const PURE_LIGHT = { primary: '#f2f2f7', secondary: '#ffffff', tertiary: '#e5e5ea', glowPrimary: '#bfdbfe', glowSecondary: '#ddd6fe' };
 
 export default function App() {
   const { currentPage, settings, resolvedTheme, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack, setResolvedTheme } = useStore();
@@ -61,6 +61,20 @@ export default function App() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [currentPage, showAllNotes, showFavorites]);
+
+  // 页面切换后恢复滚动位置
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const main = document.querySelector('main');
+      if (!main) return;
+      const scrollEl = main.querySelector('[class*="overflow-y-auto"]') as HTMLElement | null;
+      if (scrollEl) {
+        const saved = useStore.getState().scrollPositions[currentPage] || 0;
+        scrollEl.scrollTop = saved;
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [currentPage]);
 
   useEffect(() => {
     seedDatabase();
@@ -80,6 +94,12 @@ export default function App() {
     return () => mql.removeEventListener('change', handler);
   }, [settings.theme, setResolvedTheme]);
 
+  // dark/light 模式直接设置 resolvedTheme
+  useEffect(() => {
+    if (settings.theme === 'dark') setResolvedTheme('dark');
+    else if (settings.theme === 'light') setResolvedTheme('light');
+  }, [settings.theme, setResolvedTheme]);
+
   // 应用 resolved theme 到 root class
   useEffect(() => {
     const root = document.documentElement;
@@ -87,30 +107,34 @@ export default function App() {
     else { root.classList.add('dark'); root.classList.remove('light'); }
   }, [resolvedTheme]);
 
-  // 应用背景色预设 — 使用 resolvedTheme（auto 已解析）
+  // 背景色：dark→纯黑, light→纯白, custom/auto→用 backgroundColor 预设
   useEffect(() => {
-    const preset = BG_PRESETS[settings.backgroundColor] || BG_PRESETS.ocean;
-    const colors = resolvedTheme === 'light' ? preset.light : preset.dark;
+    let colors;
+    if (settings.theme === 'dark') {
+      colors = PURE_DARK;
+    } else if (settings.theme === 'light') {
+      colors = PURE_LIGHT;
+    } else {
+      // custom 或 auto：使用背景色预设
+      const preset = BG_PRESETS[settings.backgroundColor] || BG_PRESETS.ocean;
+      colors = resolvedTheme === 'light' ? preset.light : preset.dark;
+    }
     const root = document.documentElement;
     root.style.setProperty('--bg-primary', colors.primary);
     root.style.setProperty('--bg-secondary', colors.secondary);
     root.style.setProperty('--bg-tertiary', colors.tertiary);
     root.style.setProperty('--glow-primary', colors.glowPrimary);
     root.style.setProperty('--glow-secondary', colors.glowSecondary);
-  }, [settings.backgroundColor, settings.customBg, resolvedTheme]);
+  }, [settings.theme, settings.backgroundColor, resolvedTheme]);
 
   // 重点色 — 仅影响强调元素
   useEffect(() => {
-    let preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.rose;
-    if (settings.accentColor === 'custom') {
-      const { primary, secondary } = settings.customAccent;
-      preset = { primary, secondary, gradient: `linear-gradient(135deg, ${primary}, ${secondary})` };
-    }
+    const preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.rose;
     const root = document.documentElement;
     root.style.setProperty('--accent-mint', preset.primary);
     root.style.setProperty('--accent-ocean', preset.secondary);
     root.style.setProperty('--accent-gradient', preset.gradient);
-  }, [settings.accentColor, settings.customAccent]);
+  }, [settings.accentColor]);
 
   // 字体大小全局生效 — 通过 data-font-size 控制 CSS 变量
   useEffect(() => {
@@ -128,7 +152,7 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
         e.preventDefault();
         useStore.getState().setSelectedNoteId(null);
-        useStore.getState().setCurrentPage('editor');
+        useStore.getState().navigateTo('editor');
       }
     };
     window.addEventListener('keydown', handler);
@@ -145,12 +169,6 @@ export default function App() {
       case 'settings': return <Settings />;
       default: return <Home />;
     }
-  };
-
-  // 页面切换时关闭侧边栏
-  const handlePageChange = (page: string) => {
-    useStore.getState().setCurrentPage(page);
-    setSidebarOpen(false);
   };
 
   return (
@@ -224,7 +242,7 @@ export default function App() {
 }
 
 function BottomSearchBar() {
-  const { searchQuery, setSearchQuery, setCurrentPage, navigateTo, setSelectedNoteId, setShowAllNotes, currentPage } = useStore();
+  const { searchQuery, setSearchQuery, navigateTo, setSelectedNoteId, setShowAllNotes, currentPage } = useStore();
   const [searchFocused, setSearchFocused] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -260,7 +278,7 @@ function BottomSearchBar() {
 
   const handleNewNote = () => {
     setSelectedNoteId(null);
-    setCurrentPage('editor');
+    navigateTo('editor');
   };
 
   const handleSearchFocus = () => {

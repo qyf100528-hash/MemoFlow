@@ -51,14 +51,14 @@ export function CloudSync() {
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-1 sm:mb-2">云同步中心</h1>
-        <p className="text-sm text-[var(--text-secondary)]">连接你的网盘，让笔记自由流动</p>
+        <h1 className="typo-title mb-1 sm:mb-2">云同步中心</h1>
+        <p className="typo-body">连接你的网盘，让笔记自由流动</p>
       </div>
 
       {/* 已连接的网盘 */}
       {accounts && accounts.length > 0 && (
         <section className="mb-6 sm:mb-8">
-          <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">已连接的网盘</h2>
+          <h2 className="typo-section mb-3 sm:mb-4">已连接的网盘</h2>
           <div className="space-y-3">
             {accounts.map((account, i) => {
               const meta = cloudProviders[account.provider];
@@ -80,7 +80,7 @@ export function CloudSync() {
                     {/* 信息 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-[var(--text-primary)] text-sm sm:text-base">{meta.name}</h3>
+                        <h3 className="typo-section">{meta.name}</h3>
                         <span className="px-2 py-0.5 rounded-full text-xs flex items-center gap-1" style={{ background: '#22c55e20', color: '#22c55e' }}>
                           <Check size={10} /> 已连接
                         </span>
@@ -90,7 +90,7 @@ export function CloudSync() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 break-all">
+                      <p className="typo-meta mt-1 break-all">
                         <span className="block">远程路径: {account.remotePath}</span>
                         {account.lastSyncAt && <span className="block">上次同步: {new Date(account.lastSyncAt).toLocaleString('zh-CN')}</span>}
                       </p>
@@ -129,7 +129,7 @@ export function CloudSync() {
                       >
                         <div className="flex items-center gap-2 text-sm">
                           <Check size={16} className="text-[#22c55e]" />
-                          <span className="text-[var(--text-primary)]">同步完成: 成功 {syncResult.success} 条, 失败 {syncResult.failed} 条</span>
+                          <span className="typo-label">同步完成: 成功 {syncResult.success} 条, 失败 {syncResult.failed} 条</span>
                         </div>
                       </motion.div>
                     )}
@@ -143,7 +143,7 @@ export function CloudSync() {
 
       {/* 可用网盘 */}
       <section>
-        <h2 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">添加网盘</h2>
+        <h2 className="typo-section mb-3 sm:mb-4">添加网盘</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {(Object.keys(cloudProviders) as CloudProvider[]).map((provider, i) => {
             const meta = cloudProviders[provider];
@@ -161,8 +161,8 @@ export function CloudSync() {
                     {meta.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-[var(--text-primary)] text-sm sm:text-base">{meta.name}</h3>
-                    <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5 line-clamp-2">{meta.desc}</p>
+                    <h3 className="typo-section">{meta.name}</h3>
+                    <p className="typo-meta mt-0.5 line-clamp-2">{meta.desc}</p>
                   </div>
                   {isConnected ? (
                     <span className="px-3 py-2 rounded-xl text-sm text-[#22c55e] flex items-center gap-1 shrink-0">
@@ -193,8 +193,8 @@ export function CloudSync() {
         <div className="flex items-start gap-3">
           <AlertCircle size={20} className="text-[var(--accent-ocean)] shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-[var(--text-primary)] mb-1 text-sm sm:text-base">关于云同步</h3>
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
+            <h3 className="typo-section mb-1">关于云同步</h3>
+            <p className="typo-meta leading-relaxed">
               MemoFlow 采用「离线优先」架构，所有笔记首先存储在本地 IndexedDB，然后按需同步到云端。
               支持增量同步（仅上传变更内容）和冲突检测。数据以 JSON 格式加密上传，确保跨平台兼容。
             </p>

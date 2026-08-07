@@ -25,6 +25,7 @@
   --text-primary: rgba(255, 255, 255, 0.94);
   --text-secondary: rgba(255, 255, 255, 0.56);
   --text-tertiary: rgba(255, 255, 255, 0.38);
+  --text-placeholder: rgba(255, 255, 255, 0.25);
 
   /* 分割线 */
   --color-divider: rgba(255, 255, 255, 0.08);
@@ -54,39 +55,41 @@
 
 :root.light {
   /* ============ Apple HIG 动态颜色系统 — 浅色模式 ============ */
-  /* 背景：iOS 浅色模式标准暖白 */
-  --bg-primary: #f5f5f7;
+  /* 背景：iOS 浅色模式 — 柔和暖白，纸质质感，非纯白 */
+  --bg-primary: #f2f2f7;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #f2f2f7;
+  --bg-tertiary: #e5e5ea;
 
-  /* 语义化层级 — 浅色模式：逐级提亮至纯白 */
-  --color-background: #f5f5f7;
+  /* 语义化层级 — 浅色模式：逐级提亮，营造空气感 */
+  --color-background: #f2f2f7;
   --color-surface: #ffffff;
-  --color-card: #ffffff;
+  --color-card: rgba(255, 255, 255, 0.8);
   --color-elevated: #ffffff;
 
-  /* 玻璃材质 — 浅色模式：高透明白 + 柔和模糊 */
-  --glass-bg: rgba(255, 255, 255, 0.72);
-  --glass-bg-hover: rgba(255, 255, 255, 0.88);
-  --glass-border: rgba(0, 0, 0, 0.06);
-  --glass-border-strong: rgba(0, 0, 0, 0.12);
+  /* 玻璃材质 — 浅色模式：半透明白 + 强模糊，如磨砂玻璃 */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-bg-hover: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-border-strong: rgba(0, 0, 0, 0.1);
 
-  /* 文字 */
-  --text-primary: rgba(0, 0, 0, 0.88);
+  /* 文字 — iOS 标准色阶 */
+  --text-primary: rgba(0, 0, 0, 0.85);
   --text-secondary: rgba(0, 0, 0, 0.5);
-  --text-tertiary: rgba(0, 0, 0, 0.32);
+  --text-tertiary: rgba(0, 0, 0, 0.3);
+  --text-placeholder: rgba(0, 0, 0, 0.2);
 
-  /* 分割线 */
-  --color-divider: rgba(0, 0, 0, 0.08);
+  /* 分割线 — 极淡 */
+  --color-divider: rgba(0, 0, 0, 0.06);
 
-  /* 阴影系统 — 浅色模式：极柔和 */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
-  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.14);
-  --inset-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+  /* 阴影系统 — 浅色模式：柔和扩散，模拟自然光照 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 20px rgba(244, 114, 182, 0.12);
+  /* 内高光 — 浅色模式顶部白色光泽，模拟光照从上方 */
+  --inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 
-  /* 光晕色 — 浅色模式更柔和 */
+  /* 光晕色 — 浅色模式清透 */
   --glow-primary: #22d3ee;
   --glow-secondary: #60a5fa;
 }
@@ -212,6 +215,32 @@ textarea:focus, input:focus { outline: none; }
 }
 .btn-primary:hover { opacity: 0.92; transform: scale(1.02); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15), inset 0 0.5px 0 rgba(255, 255, 255, 0.25); }
 .btn-primary:active { transform: scale(0.97); }
+
+/* ============ Apple Notes 风格网格卡片 — 预览区域 ============ */
+.note-grid-card-inner {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--glass-border);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: var(--shadow-sm), var(--inset-highlight);
+  transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  /* 横向矩形比例 ~1.4:1 */
+  aspect-ratio: 1.4 / 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.group:hover .note-grid-card-inner {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  box-shadow: var(--shadow-md), var(--inset-highlight);
+}
+/* 触摸设备移除 hover 变换 */
+@media (hover: none) {
+  .group:hover .note-grid-card-inner { transform: none; }
+}
 
 /* ============ Markdown 排版 ============ */
 .markdown-body { font-size: var(--font-size-base, 1rem); line-height: 1.65; }
@@ -398,4 +427,97 @@ textarea:focus, input:focus { outline: none; }
 }
 .ios-list-row:active {
   background: var(--glass-bg-hover);
+}
+
+/* ============ Typography Token System — Apple Notes Inspired ============ */
+/* 集中式文字层级系统，替代分散的 Tailwind 文字样式 */
+/* 层级：Hero > Title > Section > NoteTitle > Body > Label > Meta > Caption */
+
+/* Hero Title — 首页大标题，最大字号，粗体 */
+.typo-hero {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+@media (min-width: 640px) {
+  .typo-hero { font-size: 2.25rem; }
+}
+
+/* Page Title — 页面标题，半粗体，高对比度 */
+.typo-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+@media (min-width: 640px) {
+  .typo-title { font-size: 1.5rem; }
+}
+
+/* Section Header — 区块标题，半粗体 */
+.typo-section {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+
+/* Note Title — 笔记标题（列表/卡片中），半粗体 */
+.typo-note-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+/* Body — 正文/描述/副标题，普通字重 */
+.typo-body {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* Body Large — 大正文/首页副标题 */
+.typo-body-lg {
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+@media (min-width: 640px) {
+  .typo-body-lg { font-size: 1.0625rem; }
+}
+
+/* Label — 表单/设置标签，中等字重 */
+.typo-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Meta — 时间/数量/状态，最小字号，浅灰色 */
+.typo-meta {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* Caption — 占位符/提示文字，更小更浅 */
+.typo-caption {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--text-placeholder);
+}
+
+/* Stat Number — 统计数字，粗体 */
+.typo-stat {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }

@@ -70,6 +70,7 @@ export interface CloudAccount {
   autoSync: boolean;
   syncInterval: number;
   remotePath: string;
+  sortOrder: number;
 }
 
 export type SyncStatus = 'local' | 'synced' | 'pending' | 'conflict';
@@ -106,20 +107,16 @@ export interface ImportResult {
   errors: string[];
 }
 
-export type ThemeMode = 'auto' | 'dark' | 'light';
+export type ThemeMode = 'auto' | 'dark' | 'light' | 'custom';
 export type ResolvedTheme = 'dark' | 'light';
 export type ViewMode = 'grid' | 'list' | 'kanban' | 'timeline';
 
-export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet' | 'custom';
-
-export interface CustomColor {
-  primary: string;
-  secondary: string;
-}
+export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet';
 
 export interface AppSettings {
   theme: ThemeMode;
   viewMode: ViewMode;
+  homeViewMode: ViewMode;
   defaultFolderId: string | null;
   fontSize: 'small' | 'medium' | 'large';
   autoSave: boolean;
@@ -129,7 +126,8 @@ export interface AppSettings {
   spellCheck: boolean;
   accentColor: AccentColor;
   backgroundColor: AccentColor;
-  customAccent: CustomColor;
-  customBg: CustomColor;
   deepseekApiKey: string;
+  showHomeTitle: boolean;
+  homeStatOrder: string[];
+  collapsedSections: string[];
 }

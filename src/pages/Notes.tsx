@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus } from 'lucide-react';
+import { Grid, List, Kanban, Clock, Plus, SearchX } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -13,13 +14,15 @@ export function Notes() {
     settings, setViewMode,
     selectedFolderId, selectedTagId,
     showFavorites, showAllNotes,
-    searchQuery, setSelectedNoteId, setCurrentPage,
+    searchQuery, setSearchQuery, setSelectedNoteId, navigateTo,
+    notesCache, setNotesCache,
   } = useStore();
 
   const folders = useLiveQuery(() => db.folders.toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
 
-  const notes = useLiveQuery(async () => {
+  // 从 Dexie 获取原始数据，不做排序
+  const rawNotes = useLiveQuery(async () => {
     const allNotes = await db.notes.toArray();
     let result = allNotes.filter(n => !n.isArchived);
 
@@ -44,20 +47,37 @@ export function Notes() {
       );
     }
 
-    // 置顶在前，然后按更新时间排序
-    result.sort((a, b) => {
+    return result;
+  }, [selectedFolderId, selectedTagId, showFavorites, showAllNotes, searchQuery]);
+
+  // 应用排序：如果有缓存快照则保持缓存顺序，否则按更新时间排序
+  const notes = useMemo(() => {
+    if (!rawNotes) return undefined;
+
+    if (notesCache && notesCache.length > 0) {
+      // 使用缓存顺序恢复列表快照
+      const orderMap = new Map(notesCache.map((id, i) => [id, i]));
+      // 只保留在当前过滤结果中且存在于缓存的笔记
+      const filtered = rawNotes.filter(n => orderMap.has(n.id));
+      // 按缓存顺序排列
+      filtered.sort((a, b) => (orderMap.get(a.id) ?? Infinity) - (orderMap.get(b.id) ?? Infinity));
+      return filtered;
+    }
+
+    // 无缓存时：默认按最后更新时间排序（仅在用户主动触发时）
+    const sorted = [...rawNotes];
+    sorted.sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
       return b.updatedAt - a.updatedAt;
     });
-
-    return result;
-  }, [selectedFolderId, selectedTagId, showFavorites, showAllNotes, searchQuery]);
+    return sorted;
+  }, [rawNotes, notesCache]);
 
   const currentFolder = folders?.find(f => f.id === selectedFolderId);
   const currentTag = tags?.find(t => t.id === selectedTagId);
 
   const getTitle = () => {
-    if (showFavorites) return '收藏笔记';
+    if (showFavorites) return '置顶笔记';
     if (showAllNotes) return '全部笔记';
     if (currentFolder) return `${currentFolder.icon} ${currentFolder.name}`;
     if (currentTag) return `# ${currentTag.name}`;
@@ -66,8 +86,12 @@ export function Notes() {
   };
 
   const handleNoteClick = (noteId: string) => {
+    // 保存当前列表顺序快照到缓存
+    if (notes) {
+      setNotesCache(notes.map(n => n.id));
+    }
     setSelectedNoteId(noteId);
-    setCurrentPage('editor');
+    navigateTo('editor');
   };
 
   const viewModes = [
@@ -82,8 +106,8 @@ export function Notes() {
       {/* 头部 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)]">{getTitle()}</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">{notes?.length || 0} 条笔记</p>
+          <h1 className="typo-title">{getTitle()}</h1>
+          <p className="typo-meta mt-1">{notes?.length || 0} 条笔记</p>
         </div>
         <div className="flex items-center gap-2">
           {/* 4 种视图切换 */}
@@ -104,7 +128,7 @@ export function Notes() {
             ))}
           </div>
           <button
-            onClick={() => { setSelectedNoteId(null); setCurrentPage('editor'); }}
+            onClick={() => { setSelectedNoteId(null); navigateTo('editor'); }}
             className="btn-primary flex items-center gap-2 text-sm"
           >
             <Plus size={18} /> 新建
@@ -113,7 +137,15 @@ export function Notes() {
       </div>
 
       {/* 笔记列表 */}
-      {notes && notes.length > 0 ? (
+      {notes === undefined ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-center py-20"
+        >
+          <span className="typo-body">加载中...</span>
+        </motion.div>
+      ) : notes.length > 0 ? (
         <>
           {/* 列表视图 — Apple Notes 紧凑列表风格 */}
           {settings.viewMode === 'list' && (
@@ -132,7 +164,7 @@ export function Notes() {
 
           {/* 网格视图 */}
           {settings.viewMode === 'grid' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
               {notes.map((note, i) => (
                 <NoteCard
                   key={note.id}
@@ -166,6 +198,24 @@ export function Notes() {
             />
           )}
         </>
+      ) : searchQuery.trim() ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-20"
+        >
+          <div className="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
+            <SearchX size={28} className="text-[var(--text-secondary)]" />
+          </div>
+          <h3 className="typo-section mb-1">未找到相关内容</h3>
+          <p className="typo-body mb-4">没有匹配「{searchQuery}」的笔记</p>
+          <button
+            onClick={() => setSearchQuery('')}
+            className="btn-primary text-sm"
+          >
+            清除搜索
+          </button>
+        </motion.div>
       ) : (
         <motion.div
           initial={{ opacity: 0 }}
@@ -175,10 +225,10 @@ export function Notes() {
           <div className="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
             <Plus size={28} className="text-[var(--text-secondary)]" />
           </div>
-          <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-1">还没有笔记</h3>
-          <p className="text-sm text-[var(--text-secondary)] mb-4">点击右上角「新建」开始记录</p>
+          <h3 className="typo-section mb-1">还没有笔记</h3>
+          <p className="typo-body mb-4">点击右上角「新建」开始记录</p>
           <button
-            onClick={() => { setSelectedNoteId(null); setCurrentPage('editor'); }}
+            onClick={() => { setSelectedNoteId(null); navigateTo('editor'); }}
             className="btn-primary text-sm"
           >
             创建第一条笔记

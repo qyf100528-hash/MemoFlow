@@ -31,6 +31,7 @@ export class OneDriveAdapter implements CloudAdapter {
         autoSync: false,
         syncInterval: 30,
         remotePath: '/MemoFlow',
+        sortOrder: Date.now(),
       };
     }
     await startOAuth('onedrive');

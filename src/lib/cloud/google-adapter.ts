@@ -30,6 +30,7 @@ export class GoogleAdapter implements CloudAdapter {
         autoSync: false,
         syncInterval: 30,
         remotePath: 'MemoFlow',
+        sortOrder: Date.now(),
       };
     }
     await startOAuth('google');

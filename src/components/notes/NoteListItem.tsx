@@ -27,7 +27,7 @@ export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemPr
       {/* 内容 */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-[var(--text-primary)] truncate">
+          <span className="typo-note-title truncate">
             {note.title || '无标题'}
           </span>
           {noteTags.length > 0 && (
@@ -38,12 +38,12 @@ export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemPr
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-[var(--text-secondary)] truncate">{preview}</span>
-          <span className="text-xs text-[var(--text-secondary)] shrink-0 opacity-50">
+          <span className="typo-meta truncate">{preview}</span>
+          <span className="typo-meta shrink-0">
             {formatTime(note.updatedAt)}
           </span>
           {folderName && (
-            <span className="text-xs text-[var(--text-secondary)] shrink-0 opacity-40">
+            <span className="typo-meta shrink-0" style={{ opacity: 0.5 }}>
               · {folderName}
             </span>
           )}

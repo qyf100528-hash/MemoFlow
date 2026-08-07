@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Pin, Star, Lock, Paperclip } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Pin, Lock, Paperclip } from 'lucide-react';
 import type { Note, Tag } from '../../types';
 
 interface NoteCardProps {
@@ -10,58 +11,85 @@ interface NoteCardProps {
   index?: number;
 }
 
+// 提取标题：有标题用标题，无标题则取正文第一句
+function getDisplayTitle(note: Note): string {
+  if (note.title && note.title.trim()) return note.title.trim();
+  const text = (note.plainText || note.content.replace(/[#*`>\-|]/g, '')).trim();
+  if (!text) return '';
+  // 第一句：按中文句号/问号/叹号或英文句点分割
+  const firstSentence = text.split(/[。！？\n.!?]/)[0].trim();
+  return firstSentence || text.slice(0, 40);
+}
+
 export function NoteCard({ note, tags, folderName, onClick, index = 0 }: NoteCardProps) {
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
-  const preview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').slice(0, 120);
+  const preview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').slice(0, 160);
+  const title = getDisplayTitle(note);
+
+  // 动态对齐：短标题居中，长标题（接近溢出）左对齐
+  const titleRef = useRef<HTMLDivElement>(null);
+  const [align, setAlign] = useState<'center' | 'left'>('center');
+
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    // 比较 scrollWidth 和 clientWidth，溢出则左对齐
+    const checkOverflow = () => {
+      if (el.scrollWidth > el.clientWidth + 1) {
+        setAlign('left');
+      } else {
+        setAlign('center');
+      }
+    };
+    checkOverflow();
+    // 监听容器尺寸变化
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [title]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05, ease: [0.4, 0, 0.2, 1] }}
-      whileHover={{ y: -4 }}
+      transition={{ duration: 0.28, delay: index * 0.04, ease: [0.4, 0, 0.2, 1] }}
       onClick={onClick}
-      className="glass-card p-4 sm:p-5 cursor-pointer group"
+      className="cursor-pointer group flex flex-col"
     >
-      {/* 顶部图标 */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {note.isPinned && <Pin size={14} className="text-[var(--accent-mint)] fill-current" />}
-          {note.isLocked && <Lock size={14} className="text-[var(--accent-ocean)]" />}
-          {note.attachments.length > 0 && <Paperclip size={14} className="text-[var(--text-secondary)]" />}
+      {/* 预览卡片 — 内部只显示内容 */}
+      <div className="note-grid-card-inner">
+        {/* 顶部状态图标 — 极淡 */}
+        <div className="flex items-center gap-1 mb-1.5 opacity-60">
+          {note.isPinned && <Pin size={10} className="text-[var(--accent-mint)] fill-current shrink-0" />}
+          {note.isLocked && <Lock size={10} className="text-[var(--accent-ocean)] shrink-0" />}
+          {note.attachments.length > 0 && <Paperclip size={10} className="text-[var(--text-secondary)] shrink-0" />}
+          {noteTags.slice(0, 1).map((t) => (
+            <span key={t.id} className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
+          ))}
         </div>
-        <span className="text-xs text-[var(--text-secondary)]">
-          {formatTime(note.updatedAt)}
-        </span>
+
+        {/* 内容预览 — 占满剩余空间 */}
+        <p className="text-xs text-[var(--text-secondary)] leading-[1.55] flex-1 overflow-hidden">
+          {preview}
+        </p>
       </div>
 
-      {/* 标题 */}
-      <h3 className="font-semibold text-[var(--text-primary)] mb-2 line-clamp-1 group-hover:text-[var(--accent-mint)] transition-colors">
-        {note.title || '无标题'}
-      </h3>
-
-      {/* 预览 */}
-      <p className="text-sm text-[var(--text-secondary)] line-clamp-3 mb-3 leading-relaxed">
-        {preview}
-      </p>
-
-      {/* 底部 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {noteTags.slice(0, 3).map((t) => (
-            <span
-              key={t.id}
-              className="px-2 py-0.5 rounded-full text-xs"
-              style={{ background: `${t.color}20`, color: t.color, border: `1px solid ${t.color}40` }}
-            >
-              {t.name}
-            </span>
-          ))}
-          {folderName && (
-            <span className="text-xs text-[var(--text-secondary)] opacity-60">
-              · {folderName}
-            </span>
-          )}
+      {/* 卡片外部标题区 — Apple Notes 风格 */}
+      <div className="mt-1.5 px-0.5">
+        {/* 标题 — 动态对齐，单行省略 */}
+        <div
+          ref={titleRef}
+          className="text-xs font-semibold text-[var(--text-primary)] truncate leading-tight group-hover:text-[var(--accent-mint)] transition-colors"
+          style={{ textAlign: align }}
+        >
+          {title}
+        </div>
+        {/* 时间 — 小灰字 */}
+        <div
+          className="typo-caption mt-0.5 leading-tight"
+          style={{ textAlign: align }}
+        >
+          {formatTime(note.updatedAt)}{folderName ? ` · ${folderName}` : ''}
         </div>
       </div>
     </motion.div>
@@ -71,9 +99,9 @@ export function NoteCard({ note, tags, folderName, onClick, index = 0 }: NoteCar
 function formatTime(ts: number): string {
   const diff = Date.now() - ts;
   if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`;
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)} 天前`;
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
   const d = new Date(ts);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }

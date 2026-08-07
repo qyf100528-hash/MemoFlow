@@ -15,7 +15,7 @@ const TAG_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#2dd4bf', '#38bdf8', '#a78
 
 export function Sidebar() {
   const {
-    currentPage, setCurrentPage, navigateTo,
+    currentPage, navigateTo, goHome,
     selectedFolderId, setSelectedFolderId,
     selectedTagId, setSelectedTagId,
     setShowFavorites, setShowAllNotes,
@@ -33,19 +33,13 @@ export function Sidebar() {
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState(TAG_COLORS[0]);
 
-  // 统一的导航点击：点击首页时重置所有筛选状态
-  const goHome = () => {
-    setShowFavorites(false);
-    setShowAllNotes(false);
-    setSelectedFolderId(null);
-    setSelectedTagId(null);
-    setCurrentPage('home');
-  };
+  // 点击首页时使用 store 的 goHome，清空历史栈并重置筛选
+  // goHome 直接从 useStore 解构使用
 
   const navItems = [
     { id: 'home', label: '首页', icon: Home, action: goHome },
     { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); navigateTo('notes'); } },
-    { id: 'favorites', label: '收藏', icon: Star, action: () => { setShowFavorites(true); navigateTo('notes'); } },
+    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); navigateTo('notes'); } },
   ];
 
   const cloudItems = [
@@ -126,7 +120,7 @@ export function Sidebar() {
       {/* 新建笔记 */}
       <div className="px-4 pb-3">
         <button
-          onClick={() => { setCurrentPage('editor'); useStore.getState().setSelectedNoteId(null); }}
+          onClick={() => { navigateTo('editor'); useStore.getState().setSelectedNoteId(null); }}
           className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
         >
           <Plus size={18} /> 新建笔记
@@ -142,7 +136,7 @@ export function Sidebar() {
             return (
               <button
                 key={item.id}
-                onClick={() => item.action ? item.action() : setCurrentPage(item.id)}
+                onClick={() => item.action ? item.action() : navigateTo(item.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                   active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}

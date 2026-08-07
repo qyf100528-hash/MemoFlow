@@ -17,7 +17,7 @@ import { resolveLinks, renderLinksAsHtml, getLinkSuggestions } from '../../lib/l
 import type { Note as NoteType } from '../../types';
 
 export function NoteEditor() {
-  const { selectedNoteId, setSelectedNoteId, setCurrentPage, goBack } = useStore();
+  const { selectedNoteId, setSelectedNoteId, goBack } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
 
@@ -222,7 +222,7 @@ export function NoteEditor() {
   const handleDelete = async () => {
     if (!note) return;
     await db.notes.delete(note.id);
-    setCurrentPage('notes');
+    goBack();
     setSelectedNoteId(null);
   };
 
