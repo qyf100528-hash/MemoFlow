@@ -12,7 +12,7 @@ import type { AccentColor } from '../types';
 // 5 种重点色 — 与 App.tsx 中 ACCENT_PRESETS 保持一致
 const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#2dd4bf', secondary: '#38bdf8' },
-  { id: 'ocean',  label: '海洋',  primary: '#38bdf8', secondary: '#818cf8' },
+  { id: 'ocean',  label: '海洋',  primary: '#5cc8ff', secondary: '#7fd4ff' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#22d3ee' },
@@ -21,7 +21,7 @@ const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondar
 // 背景色 — 与重点色相同的 5 个选项，可自由搭配组合
 const BG_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#2dd4bf', secondary: '#38bdf8' },
-  { id: 'ocean',  label: '海洋',  primary: '#38bdf8', secondary: '#818cf8' },
+  { id: 'ocean',  label: '海洋',  primary: '#5cc8ff', secondary: '#7fd4ff' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#22d3ee' },
