@@ -1,0 +1,372 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* iOS 深色背景 — 更柔和的炭黑，避免纯黑硬朗感 */
+  --bg-primary: #0c1016;
+  --bg-secondary: #131820;
+  --bg-tertiary: #1a2129;
+  /* 玻璃材质 — 更通透、更柔和 */
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(255, 255, 255, 0.14);
+  --text-primary: rgba(255, 255, 255, 0.94);
+  --text-secondary: rgba(255, 255, 255, 0.56);
+  --text-tertiary: rgba(255, 255, 255, 0.38);
+  /* 默认玫瑰色重点色 */
+  --accent-mint: #f472b6;
+  --accent-ocean: #c084fc;
+  --accent-gradient: linear-gradient(135deg, #f472b6, #a855f7);
+  /* iOS 柔和阴影系统 */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.25);
+  /* 背景光晕 — 默认偏蓝色调（由背景色预设动态覆盖，独立于重点色） */
+  --glow-primary: #2c5fd0;
+  --glow-secondary: #4dabf7;
+  /* iOS 连续曲率圆角 — 通过较大的圆角配合内边距模拟 */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+}
+
+:root.light {
+  /* 浅色模式 — Apple 标准的暖灰白 */
+  --bg-primary: #f2f4f8;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e9edf3;
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-hover: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-border-strong: rgba(0, 0, 0, 0.1);
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.5);
+  --text-tertiary: rgba(0, 0, 0, 0.32);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.18);
+  --glow-primary: #93c5fd;
+  --glow-secondary: #a5c8ff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+html, body, #root { height: 100%; width: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  transition: background 0.4s ease, color 0.4s ease;
+  /* iOS 字体渲染优化 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
+}
+
+/* 背景光晕 — 更柔和、更大范围、更慢 */
+.app-bg { position: fixed; inset: 0; z-index: -1; background: var(--bg-primary); overflow: hidden; }
+.app-bg::before, .app-bg::after {
+  content: ''; position: absolute; border-radius: 50%; filter: blur(140px); opacity: 0.28;
+  animation: float 28s ease-in-out infinite;
+}
+.app-bg::before { width: 600px; height: 600px; background: radial-gradient(circle, var(--glow-primary, var(--accent-mint)), transparent 70%); top: -150px; left: -150px; }
+.app-bg::after { width: 700px; height: 700px; background: radial-gradient(circle, var(--glow-secondary, var(--accent-ocean)), transparent 70%); bottom: -200px; right: -200px; animation-delay: -14s; }
+:root.light .app-bg::before { opacity: 0.12; }
+:root.light .app-bg::after { opacity: 0.12; }
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(40px, -25px) scale(1.08); }
+  66% { transform: translate(-25px, 40px) scale(0.94); }
+}
+
+/* ============ 玻璃材质系统 — iOS Liquid Glass ============ */
+
+/* 基础玻璃 — 轻量背景 */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--glass-border);
+}
+
+/* 强玻璃 — 用于侧边栏等需要强毛玻璃的区域 */
+.glass-strong {
+  background: var(--glass-bg);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 0.5px solid var(--glass-border);
+}
+
+/* 玻璃卡片 — 悬浮玻璃面板，柔和阴影、减少边框 */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm), inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+  transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md), inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+}
+:root.light .glass-card {
+  box-shadow: var(--shadow-sm), inset 0 0.5px 0 rgba(255, 255, 255, 0.5);
+}
+:root.light .glass-card:hover {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-md), inset 0 0.5px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* 触摸设备移除 hover 效果 */
+@media (hover: none) {
+  .glass-card:hover { transform: none; }
+  .btn-primary:hover { transform: none; }
+}
+
+/* 移动端安全区域（刘海屏/底部横条） */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  .safe-top { padding-top: env(safe-area-inset-top); }
+}
+
+/* 移动端 — 圆角略小但保持柔和 */
+@media (max-width: 640px) {
+  .glass-card { border-radius: var(--radius-md); }
+  .markdown-body h1 { font-size: 1.5rem; }
+  .markdown-body h2 { font-size: 1.3rem; }
+  .markdown-body h3 { font-size: 1.15rem; }
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+}
+
+/* ============ 滚动条 — 更柔和 ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-mint); opacity: 0.5; }
+:root.light ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
+::selection { background: rgba(244, 114, 182, 0.3); color: var(--text-primary); }
+
+textarea, input { outline: none; border: none; background: transparent; color: var(--text-primary); font-family: inherit; }
+textarea { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+input { -webkit-appearance: none; }
+textarea:focus, input:focus { outline: none; }
+
+.gradient-text {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============ 按钮 — iOS 风格，圆润柔和 ============ */
+.btn-primary {
+  background: var(--accent-gradient);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
+}
+.btn-primary:hover { opacity: 0.92; transform: scale(1.02); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15), inset 0 0.5px 0 rgba(255, 255, 255, 0.25); }
+.btn-primary:active { transform: scale(0.97); }
+
+/* ============ Markdown 排版 ============ */
+.markdown-body { font-size: var(--font-size-base, 1rem); line-height: 1.65; }
+.markdown-body h1 { font-size: 1.8em; font-weight: 700; margin: 1rem 0 0.5rem; letter-spacing: -0.02em; }
+.markdown-body h2 { font-size: 1.5em; font-weight: 600; margin: 1rem 0 0.5rem; letter-spacing: -0.015em; }
+.markdown-body h3 { font-size: 1.25em; font-weight: 600; margin: 0.8rem 0 0.4rem; }
+.markdown-body p { margin: 0.5rem 0; line-height: 1.7; }
+.markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.markdown-body li { margin: 0.3rem 0; line-height: 1.6; }
+.markdown-body code { background: rgba(244, 114, 182, 0.1); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; font-family: 'SF Mono', ui-monospace, monospace; }
+.markdown-body pre { background: rgba(0, 0, 0, 0.28); border-radius: var(--radius-md); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; }
+.markdown-body pre code { background: transparent; padding: 0; }
+.markdown-body blockquote { border-left: 2px solid var(--accent-mint); padding-left: 1rem; margin: 0.8rem 0; opacity: 0.75; }
+.markdown-body a { color: var(--accent-mint); text-decoration: none; }
+.markdown-body table { border-collapse: collapse; margin: 0.8rem 0; width: 100%; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--glass-border); padding: 8px 12px; text-align: left; }
+
+/* ============ 字体大小全局变量 — 由 settings.fontSize 控制 ============ */
+:root { --font-size-base: 16px; }
+:root[data-font-size="small"] { --font-size-base: 14px; }
+:root[data-font-size="medium"] { --font-size-base: 16px; }
+:root[data-font-size="large"] { --font-size-base: 18px; }
+
+/* ============ iOS 胶囊形搜索栏 — Liquid Glass Pill ============ */
+.ios-pill-search {
+  /* 真正的胶囊形：圆角半径 = 高度/2，两端形成完整半圆弧 */
+  border-radius: 9999px;
+  /* 半透明玻璃材质 — 通透、柔和模糊、环境光反射 */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 50%, rgba(255, 255, 255, 0.08) 100%);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  /* 无明显边框，仅极淡的内描边模拟玻璃边缘 */
+  border: none;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.04);
+  transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ios-pill-search:focus-within {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.09) 50%, rgba(255, 255, 255, 0.12) 100%);
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.22),
+    0 3px 10px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.05);
+}
+:root.light .ios-pill-search {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(255, 255, 255, 0.72) 50%, rgba(255, 255, 255, 0.82) 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.03);
+}
+:root.light .ios-pill-search:focus-within {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.82) 50%, rgba(255, 255, 255, 0.92) 100%);
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.1),
+    0 3px 10px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Liquid Glass 通用面板 — 与搜索栏同质感 */
+.ios-glass {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.14),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+}
+:root.light .ios-glass {
+  background: rgba(255, 255, 255, 0.78);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.06),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Liquid Glass 按钮 — 汉堡菜单等小按钮 */
+.ios-glass-btn {
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.1),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+:root.light .ios-glass-btn {
+  background: rgba(255, 255, 255, 0.78);
+  border: 0.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 2px 10px rgba(0, 0, 0, 0.05),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
+}
+.ios-glass-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.12);
+}
+:root.light .ios-glass-btn:active {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+/* iOS 胶囊形新建按钮 — 悬浮玻璃球，与搜索栏同形态 */
+.ios-pill-new {
+  border-radius: 9999px;
+  background: var(--accent-gradient);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.08);
+  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ios-pill-new:hover {
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.24),
+    0 3px 10px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.1);
+}
+:root.light .ios-pill-new {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.06);
+}
+
+/* ============ iOS 风格分段控制器 — 用于视图切换等 ============ */
+.ios-segment {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 0.5px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.ios-segment-btn {
+  border-radius: calc(var(--radius-md) - 3px);
+  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.ios-segment-btn.active {
+  background: var(--glass-bg-hover);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
+}
+:root.light .ios-segment-btn.active {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* ============ iOS 风格 Toggle 开关 — 更圆润 ============ */
+.ios-toggle {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  transition: background-color 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  cursor: pointer;
+}
+.ios-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ============ iOS 列表行 — 用于设置等 ============ */
+.ios-list-row {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+}
+.ios-list-row:active {
+  background: var(--glass-bg-hover);
+}
