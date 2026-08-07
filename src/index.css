@@ -15,18 +15,18 @@
   --text-primary: rgba(255, 255, 255, 0.94);
   --text-secondary: rgba(255, 255, 255, 0.56);
   --text-tertiary: rgba(255, 255, 255, 0.38);
-  /* 默认玫瑰色重点色 */
-  --accent-mint: #f472b6;
-  --accent-ocean: #c084fc;
-  --accent-gradient: linear-gradient(135deg, #f472b6, #a855f7);
+  /* 默认海洋重点色 — 蓝 #38bdf8 + 紫 #818cf8 */
+  --accent-mint: #38bdf8;
+  --accent-ocean: #818cf8;
+  --accent-gradient: linear-gradient(135deg, #38bdf8, #6366f1);
   /* iOS 柔和阴影系统 */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.25);
-  /* 背景光晕 — 默认偏蓝色调（由背景色预设动态覆盖，独立于重点色） */
-  --glow-primary: #2c5fd0;
-  --glow-secondary: #4dabf7;
+  --shadow-glow: 0 0 24px rgba(56, 189, 248, 0.25);
+  /* 背景光晕 — 与重点色海洋一致 */
+  --glow-primary: #38bdf8;
+  --glow-secondary: #818cf8;
   /* iOS 连续曲率圆角 — 通过较大的圆角配合内边距模拟 */
   --radius-sm: 10px;
   --radius-md: 16px;
@@ -49,9 +49,9 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.18);
-  --glow-primary: #93c5fd;
-  --glow-secondary: #a5c8ff;
+  --shadow-glow: 0 0 24px rgba(56, 189, 248, 0.18);
+  --glow-primary: #7dd3fc;
+  --glow-secondary: #a5b4fc;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -154,7 +154,7 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-mint); opacity: 0.5; }
 :root.light ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); }
-::selection { background: rgba(244, 114, 182, 0.3); color: var(--text-primary); }
+::selection { background: rgba(56, 189, 248, 0.3); color: var(--text-primary); }
 
 textarea, input { outline: none; border: none; background: transparent; color: var(--text-primary); font-family: inherit; }
 textarea { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
@@ -192,7 +192,7 @@ textarea:focus, input:focus { outline: none; }
 .markdown-body p { margin: 0.5rem 0; line-height: 1.7; }
 .markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; }
 .markdown-body li { margin: 0.3rem 0; line-height: 1.6; }
-.markdown-body code { background: rgba(244, 114, 182, 0.1); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; font-family: 'SF Mono', ui-monospace, monospace; }
+.markdown-body code { background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; font-family: 'SF Mono', ui-monospace, monospace; }
 .markdown-body pre { background: rgba(0, 0, 0, 0.28); border-radius: var(--radius-md); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; }
 .markdown-body pre code { background: transparent; padding: 0; }
 .markdown-body blockquote { border-left: 2px solid var(--accent-mint); padding-left: 1rem; margin: 0.8rem 0; opacity: 0.75; }
