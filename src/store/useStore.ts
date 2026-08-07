@@ -53,8 +53,10 @@ const defaultSettings: AppSettings = {
   markdownDefault: true,
   showLineNumbers: false,
   spellCheck: false,
-  accentColor: 'ocean',
+  accentColor: 'rose',
   backgroundColor: 'ocean',
+  customAccent: { primary: '#f472b6', secondary: '#c084fc' },
+  customBg: { primary: '#0a1a24', secondary: '#3b82f6' },
   deepseekApiKey: '',
 };
 
@@ -97,19 +99,22 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'memoflow-store',
-      version: 6,
+      version: 7,
       partialize: (s) => ({
         ...s,
         pageHistory: [],
       }),
       migrate: (persistedState: unknown, version: number) => {
         const s = persistedState as Partial<AppState>;
-        const VALID_ACCENT = ['mint', 'ocean', 'sunset', 'rose', 'violet', 'black', 'white'];
+        const VALID_ACCENT = ['mint', 'ocean', 'sunset', 'rose', 'violet', 'custom'];
         const VALID_THEME = ['auto', 'dark', 'light'];
         if (s.settings) {
-          if (!VALID_ACCENT.includes(s.settings.accentColor)) s.settings.accentColor = 'ocean';
+          if (!VALID_ACCENT.includes(s.settings.accentColor)) s.settings.accentColor = 'rose';
           if (!VALID_ACCENT.includes(s.settings.backgroundColor)) s.settings.backgroundColor = 'ocean';
           if (!VALID_THEME.includes(s.settings.theme)) s.settings.theme = 'auto';
+          // v7: 补充自定义颜色默认值
+          if (!s.settings.customAccent) s.settings.customAccent = { primary: '#f472b6', secondary: '#c084fc' };
+          if (!s.settings.customBg) s.settings.customBg = { primary: '#0a1a24', secondary: '#3b82f6' };
         }
         return s as AppState;
       },

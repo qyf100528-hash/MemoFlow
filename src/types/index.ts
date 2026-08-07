@@ -110,7 +110,12 @@ export type ThemeMode = 'auto' | 'dark' | 'light';
 export type ResolvedTheme = 'dark' | 'light';
 export type ViewMode = 'grid' | 'list' | 'kanban' | 'timeline';
 
-export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet' | 'black' | 'white';
+export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet' | 'custom';
+
+export interface CustomColor {
+  primary: string;
+  secondary: string;
+}
 
 export interface AppSettings {
   theme: ThemeMode;
@@ -124,5 +129,7 @@ export interface AppSettings {
   spellCheck: boolean;
   accentColor: AccentColor;
   backgroundColor: AccentColor;
+  customAccent: CustomColor;
+  customBg: CustomColor;
   deepseekApiKey: string;
 }

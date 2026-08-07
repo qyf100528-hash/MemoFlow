@@ -9,26 +9,22 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { hasApiKey } from '../lib/ai/deepseek';
 import type { AccentColor } from '../types';
 
-// 7 种重点色 — 与 App.tsx 中 ACCENT_PRESETS 保持一致
+// 5 种预设重点色 + 1 个自定义
 const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
   { id: 'ocean',  label: '海洋',  primary: '#06b6d4', secondary: '#3b82f6' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
-  { id: 'black',  label: '墨黑',  primary: '#3a3a3c', secondary: '#48484a' },
-  { id: 'white',  label: '皓白',  primary: '#f5f5f7', secondary: '#e5e5ea' },
 ];
 
-// 背景色 — 与重点色相同的 7 个选项，可自由搭配组合
+// 5 种预设背景色 + 1 个自定义
 const BG_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
   { id: 'ocean',  label: '海洋',  primary: '#06b6d4', secondary: '#3b82f6' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
-  { id: 'black',  label: '墨黑',  primary: '#3a3a3c', secondary: '#48484a' },
-  { id: 'white',  label: '皓白',  primary: '#f5f5f7', secondary: '#e5e5ea' },
 ];
 
 export function Settings() {
@@ -85,7 +81,7 @@ export function Settings() {
               </div>
             </div>
 
-            {/* 重点色 — 7 种自定义配色 */}
+            {/* 重点色 — 5 种预设 + 自定义 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -95,7 +91,7 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">选择应用的主色调</p>
                 </div>
               </div>
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
                 {ACCENT_COLORS.map((c) => {
                   const active = settings.accentColor === c.id;
                   return (
@@ -108,7 +104,6 @@ export function Settings() {
                         border: `1px solid ${active ? c.primary : 'var(--glass-border)'}`,
                       }}
                     >
-                      {/* 色块 */}
                       <div
                         className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden"
                         style={{ background: `linear-gradient(135deg, ${c.primary}, ${c.secondary})` }}
@@ -131,20 +126,60 @@ export function Settings() {
                     </button>
                   );
                 })}
+                {/* 自定义重点色 */}
+                <button
+                  onClick={() => updateSettings({ accentColor: 'custom' })}
+                  className="relative rounded-xl p-2 sm:p-3 transition-all group"
+                  style={{
+                    background: settings.accentColor === 'custom' ? `${settings.customAccent.primary}20` : 'transparent',
+                    border: `1px solid ${settings.accentColor === 'custom' ? settings.customAccent.primary : 'var(--glass-border)'}`,
+                  }}
+                >
+                  <div
+                    className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${settings.customAccent.primary}, ${settings.customAccent.secondary})` }}
+                  >
+                    {settings.accentColor === 'custom' ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
+                          <Check size={14} className="text-white" strokeWidth={3} />
+                        </motion.div>
+                      </div>
+                    ) : (
+                      <Plus size={16} className="text-white/80" />
+                    )}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-center" style={{ color: settings.accentColor === 'custom' ? settings.customAccent.primary : 'var(--text-secondary)' }}>
+                    自定义
+                  </div>
+                </button>
               </div>
+              {/* 自定义重点色选择器 */}
+              {settings.accentColor === 'custom' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    主色
+                    <input type="color" value={settings.customAccent.primary} onChange={(e) => updateSettings({ customAccent: { ...settings.customAccent, primary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    副色
+                    <input type="color" value={settings.customAccent.secondary} onChange={(e) => updateSettings({ customAccent: { ...settings.customAccent, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                  </label>
+                </motion.div>
+              )}
             </div>
 
-            {/* 背景色 — 与重点色相同的 7 个选项，可自由搭配 */}
+            {/* 背景色 — 5 种预设 + 自定义，可自由搭配 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <label className="text-sm font-medium text-[var(--text-primary)] flex items-center gap-2">
                     <Palette size={14} /> 背景色
                   </label>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">选择应用的背景色调，可与重点色自由搭配</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">可与重点色自由搭配</p>
                 </div>
               </div>
-              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
                 {BG_COLORS.map((bg) => {
                   const active = settings.backgroundColor === bg.id;
                   return (
@@ -179,7 +214,47 @@ export function Settings() {
                     </button>
                   );
                 })}
+                {/* 自定义背景色 */}
+                <button
+                  onClick={() => updateSettings({ backgroundColor: 'custom' })}
+                  className="relative rounded-xl p-2 sm:p-3 transition-all group"
+                  style={{
+                    background: settings.backgroundColor === 'custom' ? `${settings.customBg.primary}20` : 'transparent',
+                    border: `1px solid ${settings.backgroundColor === 'custom' ? settings.customBg.primary : 'var(--glass-border)'}`,
+                  }}
+                >
+                  <div
+                    className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${settings.customBg.primary}, ${settings.customBg.secondary})` }}
+                  >
+                    {settings.backgroundColor === 'custom' ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
+                          <Check size={14} className="text-white" strokeWidth={3} />
+                        </motion.div>
+                      </div>
+                    ) : (
+                      <Plus size={16} className="text-white/80" />
+                    )}
+                  </div>
+                  <div className="text-[10px] sm:text-xs text-center" style={{ color: settings.backgroundColor === 'custom' ? settings.customBg.primary : 'var(--text-secondary)' }}>
+                    自定义
+                  </div>
+                </button>
               </div>
+              {/* 自定义背景色选择器 */}
+              {settings.backgroundColor === 'custom' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    主色
+                    <input type="color" value={settings.customBg.primary} onChange={(e) => updateSettings({ customBg: { ...settings.customBg, primary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                    副色
+                    <input type="color" value={settings.customBg.secondary} onChange={(e) => updateSettings({ customBg: { ...settings.customBg, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                  </label>
+                </motion.div>
+              )}
             </div>
 
             {/* 视图模式 — iOS 分段控制器风格，所有按钮同行等高 */}

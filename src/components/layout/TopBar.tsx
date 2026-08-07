@@ -1,8 +1,7 @@
-import { Sun, Moon, Cloud, Monitor } from 'lucide-react';
+import { Sun, Moon, Cloud } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
-import type { ThemeMode } from '../../types';
 
 export function TopBar() {
   const { settings, setTheme, currentPage } = useStore();
@@ -18,14 +17,10 @@ export function TopBar() {
     settings: '设置',
   };
 
-  // 三态循环：auto → light → dark → auto
-  const cycleTheme = () => {
-    const next: Record<ThemeMode, ThemeMode> = { auto: 'light', light: 'dark', dark: 'auto' };
-    setTheme(next[settings.theme] || 'auto');
+  // 两态切换：dark ↔ light（auto 模式在设置里选）
+  const toggleTheme = () => {
+    setTheme(settings.theme === 'dark' ? 'light' : 'dark');
   };
-
-  const ThemeIcon = settings.theme === 'dark' ? Sun : settings.theme === 'light' ? Moon : Monitor;
-  const themeLabel = settings.theme === 'dark' ? '切换到自动' : settings.theme === 'light' ? '切换到深色' : '切换到浅色';
 
   return (
     <header className="glass flex items-center gap-4 px-4 sm:px-6 h-14 shrink-0" style={{ borderBottom: '1px solid var(--glass-border)' }}>
@@ -39,11 +34,10 @@ export function TopBar() {
       </div>
 
       <button
-        onClick={cycleTheme}
-        title={themeLabel}
+        onClick={toggleTheme}
         className="glass w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
       >
-        <ThemeIcon size={18} />
+        {settings.theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
     </header>
   );

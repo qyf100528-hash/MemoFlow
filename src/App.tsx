@@ -21,11 +21,10 @@ const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; 
   sunset: { primary: '#fb923c', secondary: '#f43f5e', gradient: 'linear-gradient(135deg, #fb923c, #f43f5e)' },
   rose:   { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #a855f7)' },
   violet: { primary: '#a78bfa', secondary: '#7c3aed', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
-  black:  { primary: '#3a3a3c', secondary: '#48484a', gradient: 'linear-gradient(135deg, #3a3a3c, #1c1c1e)' },
-  white:  { primary: '#f5f5f7', secondary: '#e5e5ea', gradient: 'linear-gradient(135deg, #f5f5f7, #d1d1d6)' },
+  custom: { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #c084fc)' },
 };
 
-// 背景色预设 — 7 种，与重点色同选项，可互相搭配
+// 背景色预设 — 6 种，与重点色同选项，可互相搭配
 const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string }; light: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string } }> = {
   mint: {
     dark:  { primary: '#0a1418', secondary: '#0f1a1e', tertiary: '#152227', glowPrimary: '#34d399', glowSecondary: '#2dd4bf' },
@@ -47,13 +46,9 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     dark:  { primary: '#0e0a1a', secondary: '#130f22', tertiary: '#191530', glowPrimary: '#a78bfa', glowSecondary: '#7c3aed' },
     light: { primary: '#f4f0fb', secondary: '#ffffff', tertiary: '#ebe6f6', glowPrimary: '#c4b5fd', glowSecondary: '#ddd6fe' },
   },
-  black: {
-    dark:  { primary: '#000000', secondary: '#0a0a0a', tertiary: '#141414', glowPrimary: '#3a3a3c', glowSecondary: '#48484a' },
-    light: { primary: '#1c1c1e', secondary: '#2c2c2e', tertiary: '#3a3a3c', glowPrimary: '#48484a', glowSecondary: '#636366' },
-  },
-  white: {
-    dark:  { primary: '#f5f5f7', secondary: '#ffffff', tertiary: '#e5e5ea', glowPrimary: '#e5e5ea', glowSecondary: '#d1d1d6' },
-    light: { primary: '#ffffff', secondary: '#ffffff', tertiary: '#f5f5f7', glowPrimary: '#d1d1d6', glowSecondary: '#c7c7cc' },
+  custom: {
+    dark:  { primary: '#0a1a24', secondary: '#0f202e', tertiary: '#142838', glowPrimary: '#06b6d4', glowSecondary: '#3b82f6' },
+    light: { primary: '#eef5fb', secondary: '#ffffff', tertiary: '#e0ecf6', glowPrimary: '#22d3ee', glowSecondary: '#60a5fa' },
   },
 };
 
@@ -102,16 +97,20 @@ export default function App() {
     root.style.setProperty('--bg-tertiary', colors.tertiary);
     root.style.setProperty('--glow-primary', colors.glowPrimary);
     root.style.setProperty('--glow-secondary', colors.glowSecondary);
-  }, [settings.backgroundColor, resolvedTheme]);
+  }, [settings.backgroundColor, settings.customBg, resolvedTheme]);
 
   // 重点色 — 仅影响强调元素
   useEffect(() => {
-    const preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.ocean;
+    let preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.rose;
+    if (settings.accentColor === 'custom') {
+      const { primary, secondary } = settings.customAccent;
+      preset = { primary, secondary, gradient: `linear-gradient(135deg, ${primary}, ${secondary})` };
+    }
     const root = document.documentElement;
     root.style.setProperty('--accent-mint', preset.primary);
     root.style.setProperty('--accent-ocean', preset.secondary);
     root.style.setProperty('--accent-gradient', preset.gradient);
-  }, [settings.accentColor]);
+  }, [settings.accentColor, settings.customAccent]);
 
   // 字体大小全局生效 — 通过 data-font-size 控制 CSS 变量
   useEffect(() => {
