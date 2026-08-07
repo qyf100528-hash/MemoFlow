@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Home, FileText, Star, Cloud, Package, Settings, Plus, Tag as TagIcon, Edit2, Trash2, Check, X, Briefcase, Lightbulb, Folder as FolderIcon, type LucideIcon } from 'lucide-react';
+import { Home, FileText, Star, Cloud, Package, Settings, Plus, Tag as TagIcon, Edit2, Trash2, Check, X, Briefcase, Lightbulb, Folder as FolderIcon, Clock, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useStore } from '../../store/useStore';
 import type { Tag } from '../../types';
@@ -13,6 +13,17 @@ const FOLDER_ICONS: Record<string, LucideIcon> = {
 
 const TAG_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#2dd4bf', '#38bdf8', '#a78bfa', '#ec4899', '#64748b'];
 
+const MAX_VISIBLE = 5;
+
+// 最近记录的图标映射
+const RECENT_ICONS: Record<string, LucideIcon> = {
+  'home': Home,
+  'allNotes': FileText,
+  'pinned': Star,
+  'cloud': Cloud,
+  'folder': FolderIcon,
+};
+
 export function Sidebar() {
   const {
     currentPage, navigateTo, goHome,
@@ -20,26 +31,24 @@ export function Sidebar() {
     selectedTagId, setSelectedTagId,
     setShowFavorites, setShowAllNotes,
     showFavorites, showAllNotes,
+    recentItems, addRecentItem,
   } = useStore();
 
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
-  const pinnedCount = useLiveQuery(() => db.notes.filter(n => n.isPinned).count(), []);
   const allCount = useLiveQuery(() => db.notes.filter(n => !n.isArchived).count(), []);
 
-  // 标签编辑状态
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState(TAG_COLORS[0]);
-
-  // 点击首页时使用 store 的 goHome，清空历史栈并重置筛选
-  // goHome 直接从 useStore 解构使用
+  const [foldersExpanded, setFoldersExpanded] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
 
   const navItems = [
     { id: 'home', label: '首页', icon: Home, action: goHome },
-    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); navigateTo('notes'); } },
-    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); navigateTo('notes'); } },
+    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); addRecentItem('allNotes', '全部笔记', 'allNotes'); navigateTo('notes'); } },
+    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); addRecentItem('pinned', '置顶笔记', 'pinned'); navigateTo('notes'); } },
   ];
 
   const cloudItems = [
@@ -47,6 +56,12 @@ export function Sidebar() {
     { id: 'migration', label: '数据迁移', icon: Package },
     { id: 'settings', label: '设置', icon: Settings },
   ];
+
+  const handleFolderClick = (folderId: string, folderName: string) => {
+    setSelectedFolderId(folderId);
+    addRecentItem(folderId, folderName, 'folder');
+    navigateTo('notes');
+  };
 
   // ============ 标签操作 ============
   const startCreateTag = () => {
@@ -67,12 +82,7 @@ export function Sidebar() {
     const name = tagName.trim();
     if (!name) return;
     if (editingTagId === 'new') {
-      await db.tags.add({
-        id: `tag-${Date.now()}`,
-        name,
-        color: tagColor,
-        createdAt: Date.now(),
-      });
+      await db.tags.add({ id: `tag-${Date.now()}`, name, color: tagColor, createdAt: Date.now() });
     } else if (editingTagId) {
       await db.tags.update(editingTagId, { name, color: tagColor });
     }
@@ -97,12 +107,69 @@ export function Sidebar() {
     setTagName('');
   };
 
-  // 统一的激活样式判断
   const isNavActive = (itemId: string) => {
     if (itemId === 'home') return currentPage === 'home' && !showFavorites && !showAllNotes;
     if (itemId === 'favorites') return showFavorites;
     if (itemId === 'notes') return showAllNotes;
     return currentPage === itemId;
+  };
+
+  const visibleFolders = folders?.slice(0, MAX_VISIBLE) || [];
+  const hiddenFolders = folders?.slice(MAX_VISIBLE) || [];
+  const visibleTags = tags?.slice(0, MAX_VISIBLE) || [];
+  const hiddenTags = tags?.slice(MAX_VISIBLE) || [];
+
+  const renderFolderButton = (f: NonNullable<typeof folders>[number]) => {
+    const active = selectedFolderId === f.id && !showFavorites && !showAllNotes;
+    const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+    return (
+      <button
+        key={f.id}
+        onClick={() => handleFolderClick(f.id, f.name)}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+          active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+        }`}
+        style={active ? { background: 'rgba(45, 212, 191, 0.15)' } : {}}
+      >
+        <Icon size={18} />
+        <span className="flex-1 text-left truncate">{f.name}</span>
+      </button>
+    );
+  };
+
+  const renderTagItem = (t: Tag) => {
+    const active = selectedTagId === t.id;
+    return (
+      <div key={t.id} className="group flex items-center gap-1">
+        <button
+          onClick={() => { setSelectedTagId(t.id); addRecentItem(t.id, t.name, 'tag'); navigateTo('notes'); }}
+          className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
+            active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          }`}
+          style={{ background: active ? t.color : `${t.color}15`, border: `1px solid ${t.color}30` }}
+        >
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+          <span className="truncate">{t.name}</span>
+        </button>
+        <div className="hidden group-hover:flex items-center gap-0.5">
+          <button onClick={() => startEditTag(t)} className="w-5 h-5 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)]" title="重命名">
+            <Edit2 size={11} />
+          </button>
+          <button onClick={() => deleteTag(t.id)} className="w-5 h-5 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400" title="删除">
+            <Trash2 size={11} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const handleRecentClick = (item: typeof recentItems[number]) => {
+    if (item.id === 'allNotes') { setShowAllNotes(true); navigateTo('notes'); }
+    else if (item.id === 'pinned') { setShowFavorites(true); navigateTo('notes'); }
+    else if (item.id === 'home') { goHome(); }
+    else if (item.id.startsWith('folder-cloud-')) { setSelectedFolderId(item.id); navigateTo('notes'); }
+    else if (item.id.startsWith('folder-')) { setSelectedFolderId(item.id); navigateTo('notes'); }
+    else { setSelectedTagId(item.id); navigateTo('notes'); }
   };
 
   return (
@@ -144,55 +211,45 @@ export function Sidebar() {
               >
                 <Icon size={18} />
                 <span className="flex-1 text-left">{item.label}</span>
-                {item.count !== undefined && (
-                  <span className="text-xs opacity-50">{item.count}</span>
-                )}
+                {item.count !== undefined && <span className="text-xs opacity-50">{item.count}</span>}
               </button>
             );
           })}
         </div>
 
-        {/* 文件夹 — 统一白色简约风格 */}
+        {/* 文件夹 */}
         <div className="mt-6">
           <div className="flex items-center justify-between px-3 mb-2">
             <span className="text-xs uppercase tracking-wider text-[var(--text-secondary)]">文件夹</span>
           </div>
           <div className="space-y-1">
-            {folders?.map((f) => {
-              const active = selectedFolderId === f.id && !showFavorites && !showAllNotes;
-              return (
+            {visibleFolders.map(renderFolderButton)}
+            {hiddenFolders.length > 0 && (
+              <>
+                {foldersExpanded && hiddenFolders.map(renderFolderButton)}
                 <button
-                  key={f.id}
-                  onClick={() => { setSelectedFolderId(f.id); navigateTo('notes'); }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                    active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                  style={active ? { background: 'rgba(45, 212, 191, 0.15)' } : {}}
+                  onClick={() => setFoldersExpanded(!foldersExpanded)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
                 >
-                  {(() => { const FIC = FOLDER_ICONS[f.icon] || FolderIcon; return <FIC size={18} />; })()}
-                  <span className="flex-1 text-left">{f.name}</span>
+                  {foldersExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <span>{foldersExpanded ? '收起' : `更多… (${hiddenFolders.length})`}</span>
                 </button>
-              );
-            })}
+              </>
+            )}
           </div>
         </div>
 
-        {/* 标签 — 支持自定义 */}
+        {/* 标签 */}
         <div className="mt-6">
           <div className="flex items-center justify-between px-3 mb-2">
             <span className="text-xs uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1">
               <TagIcon size={12} /> 标签
             </span>
-            <button
-              onClick={startCreateTag}
-              className="text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
-              title="新建标签"
-            >
+            <button onClick={startCreateTag} className="text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors" title="新建标签">
               <Plus size={14} />
             </button>
           </div>
 
-          {/* 标签编辑器 */}
           {showTagEditor && (
             <div className="px-3 mb-2 ios-glass p-3 space-y-2" style={{ borderRadius: 12 }}>
               <input
@@ -229,49 +286,22 @@ export function Sidebar() {
             </div>
           )}
 
-          {/* 标签列表 */}
           <div className="space-y-1 px-3">
-            {tags?.map((t) => {
-              const active = selectedTagId === t.id;
-              return (
-                <div key={t.id} className="group flex items-center gap-1">
-                  <button
-                    onClick={() => { setSelectedTagId(t.id); navigateTo('notes'); }}
-                    className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
-                      active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                    }`}
-                    style={{
-                      background: active ? t.color : `${t.color}15`,
-                      border: `1px solid ${t.color}30`,
-                    }}
-                  >
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                    <span className="truncate">{t.name}</span>
-                  </button>
-                  <div className="hidden group-hover:flex items-center gap-0.5">
-                    <button
-                      onClick={() => startEditTag(t)}
-                      className="w-5 h-5 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)]"
-                      title="重命名"
-                    >
-                      <Edit2 size={11} />
-                    </button>
-                    <button
-                      onClick={() => deleteTag(t.id)}
-                      className="w-5 h-5 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400"
-                      title="删除"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {visibleTags.map(renderTagItem)}
+            {hiddenTags.length > 0 && (
+              <>
+                {tagsExpanded && hiddenTags.map(renderTagItem)}
+                <button
+                  onClick={() => setTagsExpanded(!tagsExpanded)}
+                  className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+                >
+                  {tagsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <span>{tagsExpanded ? '收起' : `更多… (${hiddenTags.length})`}</span>
+                </button>
+              </>
+            )}
             {(!tags || tags.length === 0) && !showTagEditor && (
-              <button
-                onClick={startCreateTag}
-                className="w-full text-xs text-[var(--text-secondary)] hover:text-[var(--accent-mint)] py-2 transition-colors"
-              >
+              <button onClick={startCreateTag} className="w-full text-xs text-[var(--text-secondary)] hover:text-[var(--accent-mint)] py-2 transition-colors">
                 + 创建第一个标签
               </button>
             )}
@@ -279,7 +309,7 @@ export function Sidebar() {
         </div>
 
         {/* 底部导航 */}
-        <div className="mt-6 space-y-1 pb-4">
+        <div className="mt-6 space-y-1">
           {cloudItems.map((item) => {
             const Icon = item.icon;
             const active = currentPage === item.id;
@@ -298,6 +328,35 @@ export function Sidebar() {
             );
           })}
         </div>
+
+        {/* 最近 — 所有导航记录 */}
+        {recentItems.length > 0 && (
+          <div className="mt-4 pb-4">
+            <div className="flex items-center gap-1 px-3 mb-2">
+              <Clock size={12} className="text-[var(--text-secondary)]" />
+              <span className="text-xs uppercase tracking-wider text-[var(--text-secondary)]">最近</span>
+            </div>
+            <div className="space-y-1">
+              {recentItems.map((item) => {
+                const Icon = RECENT_ICONS[item.icon] || FolderIcon;
+                const active = selectedFolderId === item.id || (item.id === 'allNotes' && showAllNotes) || (item.id === 'pinned' && showFavorites);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleRecentClick(item)}
+                    className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                      active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                    style={active ? { background: 'rgba(45, 212, 191, 0.15)' } : {}}
+                  >
+                    <Icon size={14} />
+                    <span className="flex-1 text-left truncate">{item.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </nav>
     </aside>
   );

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus, SearchX } from 'lucide-react';
+import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -20,6 +20,7 @@ export function Notes() {
 
   const folders = useLiveQuery(() => db.folders.toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
+  const cloudAccounts = useLiveQuery(() => db.cloudAccounts.filter(a => a.isConnected).toArray(), []);
 
   // 从 Dexie 获取原始数据，不做排序
   const rawNotes = useLiveQuery(async () => {
@@ -75,6 +76,11 @@ export function Notes() {
 
   const currentFolder = folders?.find(f => f.id === selectedFolderId);
   const currentTag = tags?.find(t => t.id === selectedTagId);
+
+  // 检测是否选择了未连接的网盘文件夹
+  const isCloudFolder = selectedFolderId?.startsWith('folder-cloud-');
+  const cloudProvider = isCloudFolder ? selectedFolderId!.replace('folder-cloud-', '') : null;
+  const isCloudConnected = cloudProvider ? cloudAccounts?.some(a => a.provider === cloudProvider) : false;
 
   const getTitle = () => {
     if (showFavorites) return '置顶笔记';
@@ -198,6 +204,21 @@ export function Notes() {
             />
           )}
         </>
+      ) : isCloudFolder && !isCloudConnected ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex flex-col items-center justify-center py-20"
+        >
+          <div className="w-16 h-16 rounded-2xl glass flex items-center justify-center mb-4">
+            <CloudOff size={28} className="text-[var(--text-secondary)]" />
+          </div>
+          <h3 className="typo-section mb-1">网盘未连接</h3>
+          <p className="typo-body mb-4">请先连接{currentFolder?.name || '该网盘'}后查看笔记</p>
+          <button onClick={() => navigateTo('cloud')} className="btn-primary text-sm">
+            前往云同步
+          </button>
+        </motion.div>
       ) : searchQuery.trim() ? (
         <motion.div
           initial={{ opacity: 0 }}

@@ -2,7 +2,7 @@
 import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Star, Folder as FolderIcon, Cloud, TrendingUp, ArrowRight, LayoutGrid, List, Grid, Kanban, Clock, Check, Plus, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Star, Folder as FolderIcon, Cloud, TrendingUp, ArrowRight, LayoutGrid, List, Grid, Kanban, Clock, Check, Plus, ChevronDown, ChevronRight, FolderPlus } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -19,8 +19,30 @@ const CLOUD_NAMES: Record<CloudProvider, string> = {
 };
 
 export function Home() {
-  const { settings, setHomeViewMode, navigateTo, setSelectedNoteId, setShowAllNotes, setShowFavorites, notesCache, setNotesCache, toggleSectionCollapse } = useStore();
+  const { settings, setHomeViewMode, navigateTo, setSelectedNoteId, setShowAllNotes, setShowFavorites, notesCache, setNotesCache, toggleSectionCollapse, setSelectedFolderId, addRecentItem } = useStore();
   const [showViewPicker, setShowViewPicker] = useState(false);
+  const [showFolderCreator, setShowFolderCreator] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderIcon, setNewFolderIcon] = useState('📁');
+
+  const FOLDER_ICON_OPTIONS = ['📁', '💼', '🏡', '💡', '📝', '⭐', '📌', '🎯', '📚', '🎨', '🎵', '✈️', '🏠', '❤️', '🔥', '🌟'];
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    const count = await db.folders.count();
+    await db.folders.add({
+      id: `folder-${Date.now()}`,
+      name: newFolderName.trim(),
+      icon: newFolderIcon,
+      color: '#2dd4bf',
+      parentId: null,
+      sortOrder: count,
+      createdAt: Date.now(),
+    });
+    setNewFolderName('');
+    setNewFolderIcon('📁');
+    setShowFolderCreator(false);
+  };
 
   // 原始数据，不做排序
   const rawNotes = useLiveQuery(async () => { const all = await db.notes.toArray(); return all.filter(n => !n.isArchived); }, []);
@@ -50,8 +72,18 @@ export function Home() {
   const statsMap: Record<string, { label: string; value: number; icon: typeof FileText; color: string; action: () => void }> = {
     allNotes: { label: '全部笔记', value: notes?.length || 0, icon: FileText, color: '#2dd4bf', action: () => { setShowAllNotes(true); navigateTo('notes'); } },
     pinned: { label: '置顶笔记', value: notes?.filter(n => n.isPinned).length || 0, icon: Star, color: '#fbbf24', action: () => { setShowFavorites(true); navigateTo('notes'); } },
-    folders: { label: '文件夹', value: folders?.length || 0, icon: FolderIcon, color: '#38bdf8', action: () => { setShowAllNotes(true); navigateTo('notes'); } },
-    clouds: { label: '已连接网盘', value: connectedClouds.length, icon: Cloud, color: '#a78bfa', action: () => navigateTo('cloud') },
+    folders: { label: '文件夹', value: folders?.length || 0, icon: FolderIcon, color: '#38bdf8', action: () => navigateTo('folders') },
+    clouds: { label: '已连接网盘', value: connectedClouds.length, icon: Cloud, color: '#a78bfa', action: () => {
+      if (connectedClouds.length > 0) {
+        const first = connectedClouds[0];
+        const folderId = `folder-cloud-${first.provider}`;
+        setSelectedFolderId(folderId);
+        addRecentItem(folderId, CLOUD_NAMES[first.provider] || first.displayName, 'cloud');
+        navigateTo('notes');
+      } else {
+        navigateTo('cloud');
+      }
+    } },
   };
 
   const statOrder = settings.homeStatOrder || ['allNotes', 'pinned', 'folders', 'clouds'];
@@ -175,8 +207,15 @@ export function Home() {
               </p>
             </div>
 
-            {/* 视图切换收纳图标 */}
-            <div className="relative shrink-0">
+            {/* 视图切换 + 新建文件夹 */}
+            <div className="relative shrink-0 flex items-center gap-2">
+              <button
+                onClick={() => setShowFolderCreator(true)}
+                className="glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+                title="新建文件夹"
+              >
+                <FolderPlus size={18} />
+              </button>
               <button
                 onClick={() => setShowViewPicker(!showViewPicker)}
                 className="glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
@@ -219,6 +258,63 @@ export function Home() {
             </div>
           </motion.div>
         )}
+
+        {/* 新建文件夹弹窗 */}
+        <AnimatePresence>
+          {showFolderCreator && (
+            <div className="z-50 bg-black/40 backdrop-blur-sm" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon('📁'); }}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 20 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                onClick={(e) => e.stopPropagation()}
+                className="glass-strong rounded-2xl p-5 sm:p-6 w-full max-w-sm"
+              >
+                <h3 className="typo-section mb-4">新建文件夹</h3>
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                  autoFocus
+                  placeholder="文件夹名称"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-[var(--glass-border)] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:border-[var(--accent-mint)] transition-colors"
+                />
+                {/* 图标选择器 */}
+                <div className="mt-3">
+                  <p className="typo-meta mb-2">选择图标</p>
+                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+                    {FOLDER_ICON_OPTIONS.map(icon => (
+                      <button
+                        key={icon}
+                        onClick={() => setNewFolderIcon(icon)}
+                        className={`aspect-square rounded-lg flex items-center justify-center text-lg transition-all ${newFolderIcon === icon ? 'bg-[var(--accent-mint)]/20 ring-1 ring-[var(--accent-mint)]' : 'hover:bg-white/5'}`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon('📁'); }}
+                    className="flex-1 px-4 py-2.5 rounded-xl glass typo-body"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleCreateFolder}
+                    disabled={!newFolderName.trim()}
+                    className="flex-1 btn-primary text-sm disabled:opacity-50"
+                  >
+                    创建
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* 统计卡片 — 根据首页视图模式切换布局，标签使用 typo-label 标题字体 */}
         {settings.homeViewMode === 'list' ? (
@@ -399,7 +495,12 @@ export function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.08 }}
                       whileHover={{ y: -3 }}
-                      onClick={() => navigateTo('cloud')}
+                      onClick={() => {
+                        const folderId = `folder-cloud-${cloud.provider}`;
+                        setSelectedFolderId(folderId);
+                        addRecentItem(folderId, name, 'cloud');
+                        navigateTo('notes');
+                      }}
                       className="glass-card p-4 text-left flex items-center gap-3"
                     >
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#a78bfa20' }}>

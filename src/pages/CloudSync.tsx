@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Cloud, Check, Plus, RefreshCw, Settings as SettingsIcon, Trash2, Upload, AlertCircle } from 'lucide-react';
-import { db } from '../lib/db';
+import { db, ensureCloudFolder } from '../lib/db';
 import { cloudProviders, getAdapter, syncAllNotes } from '../lib/cloud/adapter';
 import type { CloudProvider, CloudAccount } from '../types';
 
@@ -18,6 +18,7 @@ export function CloudSync() {
       const adapter = getAdapter(provider);
       const account = await adapter.connect({ apiKey: 'demo-key' });
       await db.cloudAccounts.add(account);
+      await ensureCloudFolder(provider);
     } catch (e) {
       console.error('连接失败:', e);
     }

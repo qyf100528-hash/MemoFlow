@@ -59,6 +59,8 @@ interface AppState {
   clearNotesCache: () => void;
   toggleSectionCollapse: (section: string) => void;
   moveHomeStat: (id: string, direction: 'up' | 'down') => void;
+  recentItems: { id: string; name: string; icon: string; openedAt: number }[];
+  addRecentItem: (id: string, name: string, icon: string) => void;
 }
 
 const defaultSettings: AppSettings = {
@@ -95,6 +97,7 @@ export const useStore = create<AppState>()(
       settings: defaultSettings,
       resolvedTheme: getSystemTheme(),
       notesCache: null,
+      recentItems: [],
 
       setCurrentPage: (page) => set({ currentPage: page }),
 
@@ -154,6 +157,10 @@ export const useStore = create<AppState>()(
       updateSettings: (ns) => set((s) => ({ settings: { ...s.settings, ...ns } })),
       setNotesCache: (ids) => set({ notesCache: ids }),
       clearNotesCache: () => set({ notesCache: null }),
+      addRecentItem: (id, name, icon) => set((s) => {
+        const filtered = s.recentItems.filter(f => f.id !== id);
+        return { recentItems: [{ id, name, icon, openedAt: Date.now() }, ...filtered].slice(0, 5) };
+      }),
       toggleSectionCollapse: (section) => set((s) => {
         const collapsed = s.settings.collapsedSections || [];
         const isCollapsed = collapsed.includes(section);

@@ -13,6 +13,7 @@ import { NoteEditor } from './components/notes/NoteEditor';
 import { CloudSync } from './pages/CloudSync';
 import { Migration } from './pages/Migration';
 import { Settings } from './pages/Settings';
+import { Folders } from './pages/Folders';
 import type { AccentColor } from './types';
 
 const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; gradient: string }> = {
@@ -167,6 +168,7 @@ export default function App() {
       case 'cloud': return <CloudSync />;
       case 'migration': return <Migration />;
       case 'settings': return <Settings />;
+      case 'folders': return <Folders />;
       default: return <Home />;
     }
   };

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Pin, Lock, Unlock, Eye, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText } from 'lucide-react';
+import { Pin, Lock, Unlock, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText, Cloud, FolderInput, Loader2, Share2 } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useStore } from '../../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -13,16 +13,18 @@ import { VersionHistory } from './VersionHistory';
 import { AIPanel } from './AIPanel';
 import { BacklinksPanel } from './BacklinksPanel';
 import { TemplatePicker } from './TemplatePicker';
-import { resolveLinks, renderLinksAsHtml, getLinkSuggestions } from '../../lib/links/link-parser';
+import { getLinkSuggestions } from '../../lib/links/link-parser';
 import type { Note as NoteType } from '../../types';
 
 export function NoteEditor() {
   const { selectedNoteId, setSelectedNoteId, goBack } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
+  const cloudAccounts = useLiveQuery(() => db.cloudAccounts.filter(a => a.isConnected).toArray(), []);
 
   const [note, setNote] = useState<Note | null>(null);
-  const [isPreview, setIsPreview] = useState(false);
+  // 手动保存模式：默认阅读模式，新建笔记自动进入编辑模式
+  const [isEditing, setIsEditing] = useState(false);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -30,25 +32,28 @@ export function NoteEditor() {
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showSaveLocation, setShowSaveLocation] = useState(false);
   const [linkSuggestions, setLinkSuggestions] = useState<NoteType[]>([]);
   const [showLinkSuggest, setShowLinkSuggest] = useState(false);
-  const [linkQuery, setLinkQuery] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
+  const [isSaving, setIsSaving] = useState(false);
   const [decrypting, setDecrypting] = useState(false);
   const [encryptPassword, setEncryptPassword] = useState('');
   const [showPasswordInput, setShowPasswordInput] = useState(false);
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
-  const lastSavedContent = useRef<string>('');
+  const [showDate, setShowDate] = useState(false);
+  // 保存勾非常驻：编辑模式下用户点击屏幕后才从三点滑出
+  const [hasInteracted, setHasInteracted] = useState(false);
+  // 编辑前的快照，用于取消编辑时恢复
+  const originalNoteRef = useRef<Note | null>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 应用模板
   const applyTemplate = (content: string, title: string) => {
     if (!note) return;
     setNote({ ...note, content, title: title || note.title });
     setShowTemplatePicker(false);
-    setSaveStatus('unsaved');
   };
 
-  // 数据验证 — 标题长度和内容大小
   const validateNote = (n: Note): string | null => {
     if (n.title.length > 200) return '标题不能超过 200 个字符';
     if (n.content.length > 500000) return '笔记内容不能超过 500KB';
@@ -67,20 +72,28 @@ export function NoteEditor() {
             if (sessionKey) {
               const { encrypted, iv } = JSON.parse(n.encryptedContent);
               const decrypted = await decryptContent(encrypted, iv, sessionKey);
-              setNote({ ...n, content: decrypted, plainText: '' });
+              const loaded = { ...n, content: decrypted, plainText: '' };
+              setNote(loaded);
+              originalNoteRef.current = loaded;
             } else {
               setNote(n);
+              originalNoteRef.current = n;
             }
           } catch {
             setNote(n);
+            originalNoteRef.current = n;
           }
         } else {
           setNote(n);
+          originalNoteRef.current = n;
         }
+        // 已有笔记默认阅读模式
+        setIsEditing(false);
       });
     } else {
+      // 新建笔记自动进入编辑模式
       const now = Date.now();
-      setNote({
+      const newNote: Note = {
         id: `note-${now}`,
         title: '',
         content: '',
@@ -95,112 +108,124 @@ export function NoteEditor() {
         createdAt: now,
         updatedAt: now,
         syncStatus: 'local',
-      });
-      setSaveStatus('unsaved');
-      setShowTemplatePicker(true);
+      };
+      setNote(newNote);
+      originalNoteRef.current = newNote;
+      setIsEditing(true);
+      setHasInteracted(false);
+      setTimeout(() => titleRef.current?.focus(), 100);
     }
   }, [selectedNoteId]);
 
-  const saveNote = async (updated?: Note) => {
-    if (!updated && !note) return;
-    const n = { ...(updated || note!) };
-    n.updatedAt = Date.now();
-    n.plainText = n.content.replace(/[#*`>\-|_\[\]()]/g, '').slice(0, 500);
+  // 手动保存
+  const handleSave = async () => {
+    if (!note) return;
+    setIsSaving(true);
+    try {
+      const n = { ...note };
+      n.updatedAt = Date.now();
+      n.plainText = n.content.replace(/[#*`>\-|_\[\]()]/g, '').slice(0, 500);
 
-    if (selectedNoteId) {
-      await saveVersionSnapshot(n);
-    }
-
-    if (n.isLocked && n.content) {
-      try {
-        const sessionKey = await getSessionKey();
-        if (sessionKey) {
-          const { encrypted, iv } = await encryptContent(n.content, sessionKey);
-          n.encryptedContent = JSON.stringify({ encrypted, iv });
-          n.isEncrypted = true;
-          n.content = '[内容已加密]';
-          n.plainText = '[内容已加密]';
-        }
-      } catch (e) {
-        console.error('加密失败:', e);
+      if (selectedNoteId) {
+        await saveVersionSnapshot(n);
       }
-    } else {
-      n.isEncrypted = false;
-      n.encryptedContent = undefined;
-    }
 
-    setSaveStatus('saving');
-    await db.notes.put(n);
-    if (n.isEncrypted) {
-      const original = updated || note!;
-      n.content = original.content;
-      n.plainText = original.plainText;
+      if (n.isLocked && n.content) {
+        try {
+          const sessionKey = await getSessionKey();
+          if (sessionKey) {
+            const { encrypted, iv } = await encryptContent(n.content, sessionKey);
+            n.encryptedContent = JSON.stringify({ encrypted, iv });
+            n.isEncrypted = true;
+            n.content = '[内容已加密]';
+            n.plainText = '[内容已加密]';
+          }
+        } catch (e) {
+          console.error('加密失败:', e);
+        }
+      } else {
+        n.isEncrypted = false;
+        n.encryptedContent = undefined;
+      }
+
+      await db.notes.put(n);
+
+      if (n.isEncrypted) {
+        n.content = note.content;
+        n.plainText = note.plainText;
+      }
+      setNote(n);
+      originalNoteRef.current = n;
+      setIsEditing(false);
+      setHasInteracted(false);
+    } finally {
+      setIsSaving(false);
     }
-    setNote(n);
-    setSaveStatus('saved');
   };
 
+  // 进入编辑模式
+  const handleStartEdit = () => {
+    if (!note) return;
+    originalNoteRef.current = { ...note };
+    setIsEditing(true);
+    setHasInteracted(false);
+    setTimeout(() => titleRef.current?.focus(), 100);
+  };
+
+  // 修改 note 字段（仅编辑模式下使用）
   const handleChange = (field: keyof Note, value: string | boolean | string[] | null | Attachment[]) => {
     if (!note) return;
     const updated = { ...note, [field]: value };
-
-    // 数据验证
-    if (field === 'title' || field === 'content') {
-      const error = validateNote(updated);
-      if (error) {
-        console.warn('数据验证失败:', error);
-        return;
-      }
+    const error = validateNote(updated);
+    if (error) {
+      console.warn('数据验证失败:', error);
+      return;
     }
-
     setNote(updated);
-    setSaveStatus('unsaved');
-
-    // 内容变化检测：只在实际内容变化时才触发保存
-    if (field === 'content' || field === 'title') {
-      const contentKey = `${updated.title}|${updated.content}`;
-      if (contentKey === lastSavedContent.current) return;
-    }
-
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      lastSavedContent.current = `${updated.title}|${updated.content}`;
-      saveNote(updated);
-    }, 1500);
   };
 
   const handleContentInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     const cursorPos = e.target.selectionStart;
     const beforeCursor = value.slice(0, cursorPos);
-
-    // 检测 [[ 模式
     const linkMatch = beforeCursor.match(/\[\[([^\]]*)$/);
     if (linkMatch) {
-      const query = linkMatch[1];
-      setLinkQuery(query);
+      setLinkQuery(linkMatch[1]);
       setShowLinkSuggest(true);
-      getLinkSuggestions(query, note?.id).then(setLinkSuggestions);
+      getLinkSuggestions(linkMatch[1], note?.id).then(setLinkSuggestions);
     } else {
       setShowLinkSuggest(false);
     }
-
     handleChange('content', value);
+  };
+
+  const [linkQuery, setLinkQuery] = useState('');
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      bodyRef.current?.focus();
+    }
+  };
+
+  const autoResizeTitle = () => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
   };
 
   const insertLink = (targetTitle: string) => {
     if (!note) return;
-    const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = bodyRef.current;
     if (!textarea) return;
     const cursorPos = textarea.selectionStart;
     const before = note.content.slice(0, cursorPos);
     const after = note.content.slice(cursorPos);
-    // 替换 [[query 为 [[title]]
     const newBefore = before.replace(/\[\[([^\]]*)$/, `[[${targetTitle}]]`);
     const newContent = newBefore + after;
     handleChange('content', newContent);
     setShowLinkSuggest(false);
-    // 设置光标位置
     setTimeout(() => {
       const newPos = newBefore.length;
       textarea.setSelectionRange(newPos, newPos);
@@ -213,9 +238,7 @@ export function NoteEditor() {
     if (target.classList.contains('note-link')) {
       e.preventDefault();
       const noteId = target.getAttribute('data-note-id');
-      if (noteId) {
-        setSelectedNoteId(noteId);
-      }
+      if (noteId) setSelectedNoteId(noteId);
     }
   };
 
@@ -224,6 +247,26 @@ export function NoteEditor() {
     await db.notes.delete(note.id);
     goBack();
     setSelectedNoteId(null);
+  };
+
+  const handleShare = async () => {
+    if (!note) return;
+    const shareText = note.plainText || note.content || '';
+    const shareTitle = note.title || '备忘录';
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: shareTitle, text: shareText });
+      } catch {
+        // 用户取消分享
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        alert('已复制到剪贴板');
+      } catch {
+        alert('分享功能不可用');
+      }
+    }
   };
 
   const handleLockToggle = async () => {
@@ -235,11 +278,11 @@ export function NoteEditor() {
         const pwd = prompt('设置锁定密码：');
         if (pwd) {
           await unlockWithPassword(pwd);
-          await handleChange('isLocked', true);
+          handleChange('isLocked', true);
         }
       }
     } else {
-      await handleChange('isLocked', true);
+      handleChange('isLocked', true);
     }
   };
 
@@ -255,7 +298,7 @@ export function NoteEditor() {
       }
       setShowPasswordInput(false);
       setEncryptPassword('');
-    } catch (e) {
+    } catch {
       alert('密码错误');
     } finally {
       setDecrypting(false);
@@ -271,102 +314,117 @@ export function NoteEditor() {
       plainText: version.plainText,
       updatedAt: Date.now(),
     });
-    setSaveStatus('unsaved');
+  };
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowDate(el.scrollTop < 10);
+  };
+
+  // 返回时如果有未保存的编辑，自动保存
+  const handleBack = () => {
+    if (isEditing && note && originalNoteRef.current) {
+      const hasChanges = note.title !== originalNoteRef.current.title || note.content !== originalNoteRef.current.content;
+      if (hasChanges) {
+        handleSave();
+      } else {
+        setIsEditing(false);
+        setHasInteracted(false);
+      }
+    }
+    goBack();
+    setSelectedNoteId(null);
   };
 
   if (!note) return <div className="flex-1 flex items-center justify-center text-[var(--text-secondary)]">加载中...</div>;
 
   const noteTags = tags?.filter(t => note.tagIds.includes(t.id)) || [];
   const currentFolder = folders?.find(f => f.id === note.folderId);
+  const isLocked = note.isLocked && note.isEncrypted;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* 工具栏 */}
       <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-3 glass" style={{ borderBottom: '1px solid var(--glass-border)' }}>
-        {/* 返回 — 始终显示 */}
-        <button onClick={() => { saveNote(); goBack(); setSelectedNoteId(null); }} className="glass w-9 h-9 rounded-xl flex items-center justify-center hover:text-[var(--accent-mint)] transition-colors shrink-0">
+        {/* 返回 */}
+        <button onClick={handleBack} className="glass w-9 h-9 rounded-xl flex items-center justify-center hover:text-[var(--accent-mint)] transition-colors shrink-0">
           <ArrowLeft size={18} />
         </button>
-        <button onClick={() => setShowTemplatePicker(true)} className="glass w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors shrink-0 hidden sm:flex" title="选择模板">
-          <FileText size={18} />
-        </button>
 
-        {/* 预览切换 — 始终显示 */}
-        <button onClick={() => setIsPreview(!isPreview)} className={`glass w-9 h-9 rounded-xl flex items-center justify-center transition-colors shrink-0 md:hidden ${isPreview ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)]'}`}>
-          {isPreview ? <Edit3 size={18} /> : <Eye size={18} />}
-        </button>
-
-        <div className="w-px h-6 bg-[var(--glass-border)] mx-0.5 hidden sm:block" />
-
-        {/* 桌面端按钮组 */}
-        <button onClick={() => handleChange('isPinned', !note.isPinned)} className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isPinned ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-          <Pin size={18} className={note.isPinned ? 'fill-current' : ''} />
-        </button>
-        <button onClick={handleLockToggle} className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isLocked ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-          {note.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
-        </button>
-
-        <div className="relative hidden sm:block">
-          <button onClick={() => setShowFolderPicker(!showFolderPicker)} className="glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-            <FolderIcon size={15} />
-            {currentFolder ? `${currentFolder.icon} ${currentFolder.name}` : '文件夹'}
-          </button>
-          {showFolderPicker && (
-            <div className="absolute top-11 left-0 glass-strong rounded-xl p-2 min-w-[160px] z-50">
-              <button onClick={() => { handleChange('folderId', null); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-secondary)]">无</button>
-              {folders?.map(f => (
-                <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]">
-                  <span>{f.icon}</span> {f.name}
-                </button>
-              ))}
+        {/* 桌面端按钮组 — 仅阅读模式显示 */}
+        {!isEditing && (
+          <>
+            <div className="w-px h-6 bg-[var(--glass-border)] mx-0.5 hidden sm:block" />
+            <button onClick={() => handleChange('isPinned', !note.isPinned)} className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isPinned ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              <Pin size={18} className={note.isPinned ? 'fill-current' : ''} />
+            </button>
+            <button onClick={handleLockToggle} className={`hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isLocked ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              {note.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
+            </button>
+            <div className="relative hidden sm:block">
+              <button onClick={() => setShowFolderPicker(!showFolderPicker)} className="glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <FolderIcon size={15} />
+                {currentFolder ? `${currentFolder.icon} ${currentFolder.name}` : '文件夹'}
+              </button>
+              {showFolderPicker && (
+                <div className="absolute top-11 left-0 glass-strong rounded-xl p-2 min-w-[160px] z-50">
+                  <button onClick={() => { handleChange('folderId', null); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-secondary)]">无</button>
+                  {folders?.map(f => (
+                    <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]">
+                      <span>{f.icon}</span> {f.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        <div className="relative hidden sm:block">
-          <button onClick={() => setShowTagPicker(!showTagPicker)} className="glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-            <TagIcon size={15} />
-            {noteTags.length > 0 ? `${noteTags.length} 个标签` : '标签'}
-          </button>
-          {showTagPicker && (
-            <div className="absolute top-11 left-0 glass-strong rounded-xl p-2 min-w-[160px] z-50">
-              {tags?.map(t => {
-                const selected = note.tagIds.includes(t.id);
-                return (
-                  <button key={t.id} onClick={() => {
-                    const newTags = selected ? note.tagIds.filter(id => id !== t.id) : [...note.tagIds, t.id];
-                    handleChange('tagIds', newTags);
-                  }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ background: t.color }} />
-                    <span className="text-[var(--text-primary)]">{t.name}</span>
-                    {selected && <Check size={14} className="text-[var(--accent-mint)] ml-auto" />}
-                  </button>
-                );
-              })}
+            <div className="relative hidden sm:block">
+              <button onClick={() => setShowTagPicker(!showTagPicker)} className="glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                <TagIcon size={15} />
+                {noteTags.length > 0 ? `${noteTags.length} 个标签` : '标签'}
+              </button>
+              {showTagPicker && (
+                <div className="absolute top-11 left-0 glass-strong rounded-xl p-2 min-w-[160px] z-50">
+                  {tags?.map(t => {
+                    const selected = note.tagIds.includes(t.id);
+                    return (
+                      <button key={t.id} onClick={() => {
+                        const newTags = selected ? note.tagIds.filter(id => id !== t.id) : [...note.tagIds, t.id];
+                        handleChange('tagIds', newTags);
+                      }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full" style={{ background: t.color }} />
+                        <span className="text-[var(--text-primary)]">{t.name}</span>
+                        {selected && <Check size={14} className="text-[var(--accent-mint)] ml-auto" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         <div className="flex-1" />
 
-        {/* 桌面端右侧按钮 */}
-        <button onClick={() => { setShowAIPanel(!showAIPanel); setShowHistory(false); setShowBacklinks(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showAIPanel ? 'text-[var(--accent-violet)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-          <Sparkles size={15} /> AI
-        </button>
-        <button onClick={() => { setShowHistory(!showHistory); setShowAIPanel(false); setShowBacklinks(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showHistory ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-          <History size={15} /> 历史
-        </button>
-        <button onClick={() => { setShowBacklinks(!showBacklinks); setShowAIPanel(false); setShowHistory(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showBacklinks ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`} title="反向链接">
-          <Link2 size={15} /> 链接
-        </button>
-        <button onClick={() => setIsPreview(!isPreview)} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${isPreview ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
-          {isPreview ? <Edit3 size={15} /> : <Eye size={15} />} {isPreview ? '编辑' : '预览'}
-        </button>
-        <button onClick={handleDelete} className="hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0">
-          <Trash2 size={18} />
-        </button>
+        {/* 桌面端右侧按钮 — 仅阅读模式 */}
+        {!isEditing && (
+          <>
+            <button onClick={() => { setShowAIPanel(!showAIPanel); setShowHistory(false); setShowBacklinks(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showAIPanel ? 'text-[var(--accent-violet)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              <Sparkles size={15} /> AI
+            </button>
+            <button onClick={() => { setShowHistory(!showHistory); setShowAIPanel(false); setShowBacklinks(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showHistory ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
+              <History size={15} /> 历史
+            </button>
+            <button onClick={() => { setShowBacklinks(!showBacklinks); setShowAIPanel(false); setShowHistory(false); }} className={`hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showBacklinks ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`} title="反向链接">
+              <Link2 size={15} /> 链接
+            </button>
+            <button onClick={handleDelete} className="hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0">
+              <Trash2 size={18} />
+            </button>
+          </>
+        )}
 
-        {/* 移动端「更多」菜单 */}
+        {/* 移动端「更多」菜单 — 位置在保存路径左边 */}
         <div className="relative sm:hidden">
           <button onClick={() => setShowMoreMenu(!showMoreMenu)} className="glass w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0">
             <MoreHorizontal size={18} />
@@ -374,18 +432,21 @@ export function NoteEditor() {
           {showMoreMenu && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
-              <div className="absolute top-11 right-0 glass-strong rounded-xl p-2 min-w-[180px] z-50 space-y-0.5">
-                <button onClick={() => { handleChange('isPinned', !note.isPinned); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
+              <div className="absolute top-11 right-0 glass-strong rounded-xl p-2 min-w-[180px] z-50 space-y-0.5 max-h-[calc(100vh-100px)] overflow-y-auto overscroll-contain">
+                <button onClick={() => { handleShare(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
+                  <Share2 size={16} /> 分享
+                </button>
+                <button onClick={() => { handleChange('isPinned', !note.isPinned); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <Pin size={16} className={note.isPinned ? 'text-[var(--accent-mint)] fill-current' : ''} /> {note.isPinned ? '取消置顶' : '置顶'}
                 </button>
                 <button onClick={() => { handleLockToggle(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   {note.isLocked ? <Lock size={16} className="text-[var(--accent-ocean)]" /> : <Unlock size={16} />} {note.isLocked ? '解锁' : '锁定'}
                 </button>
                 <div className="h-px bg-[var(--glass-border)] my-1" />
-                <button onClick={() => { setShowFolderPicker(!showFolderPicker); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
-                  <FolderIcon size={16} /> {currentFolder ? `${currentFolder.icon} ${currentFolder.name}` : '选择文件夹'}
+                <button onClick={() => { setShowSaveLocation(true); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
+                  <FolderInput size={16} /> 保存位置 {currentFolder ? `· ${currentFolder.name}` : '· 本地'}
                 </button>
-                <button onClick={() => { setShowTagPicker(!showTagPicker); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
+                <button onClick={() => { setShowTagPicker(true); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <TagIcon size={16} /> {noteTags.length > 0 ? `${noteTags.length} 个标签` : '添加标签'}
                 </button>
                 <div className="h-px bg-[var(--glass-border)] my-1" />
@@ -410,21 +471,66 @@ export function NoteEditor() {
             </>
           )}
         </div>
+
+        {/* 右上角：编辑按钮（常驻）/ ✓保存按钮（点击屏幕后从三点滑出） */}
+        <AnimatePresence mode="wait">
+          {isEditing ? (
+            hasInteracted && (
+              <motion.button
+                key="save"
+                initial={{ opacity: 0, scale: 0.5, x: -44 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.5, x: -44 }}
+                transition={{ type: 'spring', stiffness: 480, damping: 30 }}
+                whileTap={{ scale: 0.85 }}
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-50"
+                style={{ background: 'var(--accent-gradient)', color: 'white' }}
+                title="保存"
+              >
+                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Check size={20} strokeWidth={3} />}
+              </motion.button>
+            )
+          ) : (
+            <motion.button
+              key="edit"
+              initial={{ opacity: 0, scale: 0.5, x: -44 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.5, x: -44 }}
+              transition={{ type: 'spring', stiffness: 480, damping: 30 }}
+              whileTap={{ scale: 0.85 }}
+              onClick={handleStartEdit}
+              className="glass w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+              style={{ color: 'var(--accent-mint)' }}
+              title="编辑"
+            >
+              <Edit3 size={18} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* 移动端文件夹选择器 */}
-      {showFolderPicker && (
+      {/* 移动端保存位置选择器 */}
+      {showSaveLocation && (
         <div className="sm:hidden px-3 py-2 glass border-b border-[var(--glass-border)]">
           <div className="flex items-center gap-2 mb-2">
-            <FolderIcon size={16} className="text-[var(--text-secondary)]" />
-            <span className="text-sm font-medium text-[var(--text-primary)]">选择文件夹</span>
-            <button onClick={() => setShowFolderPicker(false)} className="ml-auto text-xs text-[var(--text-secondary)]">完成</button>
+            <FolderInput size={16} className="text-[var(--accent-mint)]" />
+            <span className="typo-label">保存位置</span>
+            <button onClick={() => setShowSaveLocation(false)} className="ml-auto typo-meta">完成</button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
-            <button onClick={() => { handleChange('folderId', null); setShowFolderPicker(false); }} className="glass px-3 py-1.5 rounded-lg text-sm whitespace-nowrap text-[var(--text-secondary)]">无</button>
-            {folders?.map(f => (
-              <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowFolderPicker(false); }} className={`glass px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${note.folderId === f.id ? 'text-[var(--accent-mint)]' : 'text-[var(--text-primary)]'}`}>
+            <button onClick={() => { handleChange('folderId', null); setShowSaveLocation(false); }} className={`glass px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${!note.folderId ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)]'}`}>
+              本地
+            </button>
+            {folders?.filter(f => !f.id.startsWith('folder-cloud-')).map(f => (
+              <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowSaveLocation(false); }} className={`glass px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${note.folderId === f.id ? 'text-[var(--accent-mint)]' : 'text-[var(--text-primary)]'}`}>
                 {f.icon} {f.name}
+              </button>
+            ))}
+            {folders?.filter(f => f.id.startsWith('folder-cloud-')).map(f => (
+              <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowSaveLocation(false); }} className={`glass px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${note.folderId === f.id ? 'text-[var(--accent-mint)]' : 'text-[var(--text-primary)]'}`}>
+                {f.name}
               </button>
             ))}
           </div>
@@ -436,8 +542,8 @@ export function NoteEditor() {
         <div className="sm:hidden px-3 py-2 glass border-b border-[var(--glass-border)]">
           <div className="flex items-center gap-2 mb-2">
             <TagIcon size={16} className="text-[var(--text-secondary)]" />
-            <span className="text-sm font-medium text-[var(--text-primary)]">标签</span>
-            <button onClick={() => setShowTagPicker(false)} className="ml-auto text-xs text-[var(--text-secondary)]">完成</button>
+            <span className="typo-label">标签</span>
+            <button onClick={() => setShowTagPicker(false)} className="ml-auto typo-meta">完成</button>
           </div>
           <div className="flex gap-2 flex-wrap">
             {tags?.map(t => {
@@ -453,19 +559,14 @@ export function NoteEditor() {
                 </button>
               );
             })}
-            {(!tags || tags.length === 0) && (
-              <span className="text-xs text-[var(--text-secondary)]">暂无标签，请在设置中创建</span>
-            )}
+            {(!tags || tags.length === 0) && <span className="typo-meta">暂无标签，请在设置中创建</span>}
           </div>
         </div>
       )}
 
       {/* 模板选择器 */}
       {showTemplatePicker && note && (
-        <TemplatePicker
-          onSelect={applyTemplate}
-          onClose={() => setShowTemplatePicker(false)}
-        />
+        <TemplatePicker onSelect={applyTemplate} onClose={() => setShowTemplatePicker(false)} />
       )}
 
       {/* 密码输入 */}
@@ -476,99 +577,97 @@ export function NoteEditor() {
             <button onClick={handleUnlock} disabled={decrypting} className="glass px-4 py-2 rounded-xl text-sm text-[var(--accent-mint)] hover:bg-white/10">
               {decrypting ? '解密中...' : '解锁'}
             </button>
-            <button onClick={() => { setShowPasswordInput(false); setEncryptPassword(''); }} className="text-sm text-[var(--text-secondary)]">取消</button>
+            <button onClick={() => { setShowPasswordInput(false); setEncryptPassword(''); }} className="typo-body">取消</button>
           </div>
         </div>
       )}
 
-      {/* 编辑区 */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+      {/* 内容区 — 阅读模式 vs 编辑模式 */}
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
         <div className="max-w-3xl mx-auto w-full">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-xs text-[var(--text-secondary)]">
-              {saveStatus === 'saving' ? '⏳ 保存中...' : saveStatus === 'unsaved' ? '✏️ 未保存' : '✅ 已保存'}
-            </span>
-            <span className="text-xs text-[var(--text-secondary)]">
-              {new Date(note.updatedAt).toLocaleString('zh-CN')}
-            </span>
-          </div>
+          {/* 日期 — 仅滚动到顶部时显示 */}
+          <motion.div animate={{ opacity: showDate ? 1 : 0, height: showDate ? 'auto' : 0 }} transition={{ duration: 0.2 }} className="overflow-hidden mb-3">
+            <span className="typo-meta">{new Date(note.updatedAt).toLocaleString('zh-CN')}</span>
+          </motion.div>
 
           {/* AI 面板 */}
           {showAIPanel && selectedNoteId && note && (
             <div className="mb-4">
-              <AIPanel
-                note={note}
-                onApplyTags={(tagIds) => {
-                  const updated = { ...note, tagIds: [...new Set([...note.tagIds, ...tagIds])] };
-                  setNote(updated);
-                  setSaveStatus('unsaved');
-                }}
-                onClose={() => setShowAIPanel(false)}
-              />
+              <AIPanel note={note} onApplyTags={(tagIds) => { const updated = { ...note, tagIds: [...new Set([...note.tagIds, ...tagIds])] }; setNote(updated); }} onClose={() => setShowAIPanel(false)} />
             </div>
           )}
 
           {/* 版本历史面板 */}
           {showHistory && selectedNoteId && (
             <div className="mb-4">
-              <VersionHistory
-                noteId={selectedNoteId}
-                onClose={() => setShowHistory(false)}
-                onRollback={handleRollback}
-              />
+              <VersionHistory noteId={selectedNoteId} onClose={() => setShowHistory(false)} onRollback={handleRollback} />
             </div>
           )}
 
           {/* 反向链接面板 */}
           {showBacklinks && selectedNoteId && (
             <div className="mb-4">
-              <BacklinksPanel
-                noteId={selectedNoteId}
-                onNoteClick={(id) => { setSelectedNoteId(id); setShowBacklinks(false); }}
-              />
+              <BacklinksPanel noteId={selectedNoteId} onNoteClick={(id) => { setSelectedNoteId(id); setShowBacklinks(false); }} />
             </div>
           )}
 
-          {note.isLocked && note.isEncrypted && (
+          {isLocked && (
             <div className="mb-4 px-4 py-3 rounded-xl bg-[var(--accent-ocean)]/10 border border-[var(--accent-ocean)]/20 text-sm text-[var(--accent-ocean)]">
               此笔记已加密，锁定状态下内容不可见。
             </div>
           )}
 
-          <input type="text" value={note.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="无标题"
-            className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 w-full placeholder:text-[var(--text-secondary)]"
-            disabled={note.isLocked && note.isEncrypted} />
-
-          {isPreview ? (
-            <div className="markdown-body text-[var(--text-primary)] leading-relaxed" onClick={handlePreviewLinkClick} id="markdown-preview">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {note.content || '*还没有内容，切换到编辑模式开始写作...*'}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            <div className="relative">
-              {showLinkSuggest && linkSuggestions.length > 0 && (
-                <div className="absolute z-50 glass-strong rounded-xl p-2 max-w-md max-h-48 overflow-y-auto" style={{ bottom: '100%', marginBottom: '4px' }}>
-                  <p className="text-xs text-[var(--text-secondary)] px-2 py-1">链接到笔记</p>
-                  {linkSuggestions.map((n) => (
-                    <button
-                      key={n.id}
-                      onClick={() => insertLink(n.title)}
-                      className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] flex items-center gap-2"
-                    >
-                      <Link2 size={12} className="text-[var(--accent-ocean)]" />
-                      <span className="truncate">{n.title || '无标题'}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <textarea value={note.content} onChange={handleContentInput}
-                placeholder="开始书写你的想法...  使用 [[ 笔记名 ]] 创建链接"
-                className="w-full min-h-[500px] leading-relaxed resize-none placeholder:text-[var(--text-secondary)]"
-                style={{ fontSize: 'var(--font-size-base, 16px)' }}
-                disabled={note.isLocked && note.isEncrypted} />
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {isEditing ? (
+              <motion.div key="edit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="relative">
+                {showLinkSuggest && linkSuggestions.length > 0 && (
+                  <div className="absolute z-50 glass-strong rounded-xl p-2 max-w-md max-h-48 overflow-y-auto" style={{ bottom: '100%', marginBottom: '4px' }}>
+                    <p className="typo-meta px-2 py-1">链接到笔记</p>
+                    {linkSuggestions.map((n) => (
+                      <button key={n.id} onClick={() => insertLink(n.title)} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] flex items-center gap-2">
+                        <Link2 size={12} className="text-[var(--accent-ocean)]" />
+                        <span className="truncate">{n.title || '无标题'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <textarea
+                  ref={titleRef}
+                  value={note.title}
+                  onChange={(e) => { handleChange('title', e.target.value); autoResizeTitle(); }}
+                  onKeyDown={handleTitleKeyDown}
+                  onInput={autoResizeTitle}
+                  rows={1}
+                  className="w-full bg-transparent resize-none outline-none text-[var(--text-primary)] mb-2"
+                  style={{ fontSize: '24px', fontWeight: 700, lineHeight: 1.3 }}
+                  disabled={isLocked}
+                />
+                <textarea
+                  ref={bodyRef}
+                  value={note.content}
+                  onChange={handleContentInput}
+                  className="w-full min-h-[500px] bg-transparent resize-none outline-none text-[var(--text-primary)] leading-relaxed"
+                  style={{ fontSize: 'var(--font-size-base, 16px)' }}
+                  disabled={isLocked}
+                />
+              </motion.div>
+            ) : (
+              <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="markdown-body text-[var(--text-primary)] leading-relaxed" onPointerDown={() => { if (!isEditing && note) { originalNoteRef.current = { ...note }; setIsEditing(true); setHasInteracted(true); setTimeout(() => titleRef.current?.focus(), 100); } }} id="markdown-preview">
+                {note.title && (
+                  <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '0.5rem' }}>{note.title}</h1>
+                )}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {note.content || ''}
+                </ReactMarkdown>
+                {!note.title && !note.content && (
+                  <div className="text-center py-20 text-[var(--text-secondary)]">
+                    <Edit3 size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="typo-body">点击屏幕开始记录</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

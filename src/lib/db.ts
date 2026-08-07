@@ -37,16 +37,17 @@ export async function seedDatabase() {
 
   const now = Date.now();
   await db.folders.bulkAdd([
-    { id: 'folder-work', name: '工作', icon: '💼', color: '#38bdf8', parentId: null, sortOrder: 0, createdAt: now },
-    { id: 'folder-personal', name: '个人', icon: '🏡', color: '#2dd4bf', parentId: null, sortOrder: 1, createdAt: now },
-    { id: 'folder-ideas', name: '灵感', icon: '💡', color: '#fbbf24', parentId: null, sortOrder: 2, createdAt: now },
+    { id: 'folder-local', name: 'Memo本地备忘录', icon: '📝', color: '#2dd4bf', parentId: null, sortOrder: 0, createdAt: now },
+    { id: 'folder-work', name: '工作', icon: '💼', color: '#38bdf8', parentId: null, sortOrder: 1, createdAt: now },
+    { id: 'folder-personal', name: '个人', icon: '🏡', color: '#2dd4bf', parentId: null, sortOrder: 2, createdAt: now },
+    { id: 'folder-ideas', name: '灵感', icon: '💡', color: '#fbbf24', parentId: null, sortOrder: 3, createdAt: now },
   ]);
   await db.notes.bulkAdd([
     {
       id: 'note-welcome', title: '欢迎使用 MemoFlow',
       content: '# 欢迎使用 MemoFlow\n\n**让你的记忆，自由流动。**\n\nMemoFlow 是一个极简而强大的备忘录应用，核心区别在于：\n\n- 📦 **自由导入导出** — 不被任何生态锁定\n- ☁️ **多云盘同步** — 百度网盘、Google Drive、夸克、OneDrive\n- 🔒 **数据自主** — 你的笔记永远属于你\n- ✨ **极简设计** — 玻璃拟态美学\n\n## 快速开始\n\n1. 点击左上角 **+** 创建新笔记\n2. 使用 **Markdown** 格式编辑\n3. 在 **云同步** 页面连接你的网盘\n4. 在 **数据迁移** 页面导入已有笔记\n\n> 提示：支持从 Apple Notes、Markdown、TXT、PDF、JSON 导入',
       plainText: '欢迎使用 MemoFlow 让你的记忆自由流动',
-      folderId: 'folder-personal', tagIds: [],
+      folderId: 'folder-local', tagIds: [],
       isPinned: true, isLocked: false, isArchived: false, isEncrypted: false,
       attachments: [], createdAt: now, updatedAt: now, syncStatus: 'local',
     },
@@ -67,6 +68,32 @@ export async function seedDatabase() {
       attachments: [], createdAt: now - 172800000, updatedAt: now - 7200000, syncStatus: 'local',
     },
   ]);
+}
+
+// 连接网盘时自动创建对应文件夹
+const CLOUD_FOLDER_MAP: Record<string, { name: string; icon: string; color: string }> = {
+  baidu: { name: '百度备忘录', icon: '☁️', color: '#38bdf8' },
+  quark: { name: '夸克备忘录', icon: '⚡', color: '#fbbf24' },
+  google: { name: 'Google备忘录', icon: '📁', color: '#34a853' },
+  onedrive: { name: 'One备忘录', icon: 'Cloud', color: '#0078d4' },
+};
+
+export async function ensureCloudFolder(provider: string) {
+  const config = CLOUD_FOLDER_MAP[provider];
+  if (!config) return;
+  const folderId = `folder-cloud-${provider}`;
+  const existing = await db.folders.get(folderId);
+  if (existing) return;
+  const count = await db.folders.count();
+  await db.folders.add({
+    id: folderId,
+    name: config.name,
+    icon: config.icon,
+    color: config.color,
+    parentId: null,
+    sortOrder: count,
+    createdAt: Date.now(),
+  });
 }
 
 // 清理旧的默认标签（仅执行一次）
