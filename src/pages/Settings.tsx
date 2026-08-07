@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2 } from 'lucide-react';
+import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { createTemplate, deleteTemplate } from '../lib/templates';
@@ -28,7 +28,7 @@ const BG_COLORS: { id: AccentColor; label: string; primary: string; secondary: s
 ];
 
 export function Settings() {
-  const { settings, toggleTheme, setViewMode, updateSettings } = useStore();
+  const { settings, setTheme, setViewMode, updateSettings } = useStore();
   const noteCount = useLiveQuery(() => db.notes.count(), []);
   const folderCount = useLiveQuery(() => db.folders.count(), []);
   const tagCount = useLiveQuery(() => db.tags.count(), []);
@@ -54,25 +54,30 @@ export function Settings() {
           </h2>
 
           <div className="space-y-4">
-            {/* 主题 */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
+            {/* 主题 — 三档分段控制器：自动/深色/浅色 */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
                 <label className="text-sm font-medium text-[var(--text-primary)]">主题模式</label>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">切换深色/浅色主题</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">自动跟随系统，或手动选择</p>
               </div>
-              <div className="flex gap-2 shrink-0">
-                <button
-                  onClick={() => settings.theme !== 'dark' && toggleTheme()}
-                  className={`px-3 sm:px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${settings.theme === 'dark' ? 'btn-primary' : 'glass text-[var(--text-secondary)]'}`}
-                >
-                  <Moon size={14} /> 深色
-                </button>
-                <button
-                  onClick={() => settings.theme !== 'light' && toggleTheme()}
-                  className={`px-3 sm:px-4 py-2 rounded-xl text-sm flex items-center gap-2 transition-all ${settings.theme === 'light' ? 'btn-primary' : 'glass text-[var(--text-secondary)]'}`}
-                >
-                  <Sun size={14} /> 浅色
-                </button>
+              <div className="ios-segment flex p-1 gap-0.5 shrink-0">
+                {([
+                  { mode: 'auto' as const, icon: Monitor, label: '自动' },
+                  { mode: 'dark' as const, icon: Moon, label: '深色' },
+                  { mode: 'light' as const, icon: Sun, label: '浅色' },
+                ]).map(({ mode, icon: Icon, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setTheme(mode)}
+                    className={`ios-segment-btn px-3 py-1.5 rounded-[13px] text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                      settings.theme === mode
+                        ? 'active text-[var(--text-primary)]'
+                        : 'text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    <Icon size={14} /> {label}
+                  </button>
+                ))}
               </div>
             </div>
 

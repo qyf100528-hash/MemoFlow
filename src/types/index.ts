@@ -106,7 +106,8 @@ export interface ImportResult {
   errors: string[];
 }
 
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = 'auto' | 'dark' | 'light';
+export type ResolvedTheme = 'dark' | 'light';
 export type ViewMode = 'grid' | 'list' | 'kanban' | 'timeline';
 
 export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet';

@@ -48,7 +48,7 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
 };
 
 export default function App() {
-  const { currentPage, settings, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack } = useStore();
+  const { currentPage, settings, resolvedTheme, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack, setResolvedTheme } = useStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
@@ -61,32 +61,42 @@ export default function App() {
     seedDatabase();
     cleanupDefaultTags();
     seedTemplates();
-    // 启动 Token 后台刷新服务
     tokenRefreshService.start();
     return () => tokenRefreshService.stop();
   }, []);
 
+  // 系统主题自动跟随：当 theme=auto 时监听系统深浅变化
+  useEffect(() => {
+    if (settings.theme !== 'auto') return;
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setResolvedTheme(e.matches ? 'dark' : 'light');
+    mql.addEventListener('change', handler);
+    setResolvedTheme(mql.matches ? 'dark' : 'light');
+    return () => mql.removeEventListener('change', handler);
+  }, [settings.theme, setResolvedTheme]);
+
+  // 应用 resolved theme 到 root class
   useEffect(() => {
     const root = document.documentElement;
-    if (settings.theme === 'light') { root.classList.add('light'); root.classList.remove('dark'); }
+    if (resolvedTheme === 'light') { root.classList.add('light'); root.classList.remove('dark'); }
     else { root.classList.add('dark'); root.classList.remove('light'); }
-  }, [settings.theme]);
+  }, [resolvedTheme]);
 
-  // 应用背景色预设 — 同时设置背景光晕色（独立于重点色）
+  // 应用背景色预设 — 使用 resolvedTheme（auto 已解析）
   useEffect(() => {
     const preset = BG_PRESETS[settings.backgroundColor] || BG_PRESETS.ocean;
-    const colors = settings.theme === 'light' ? preset.light : preset.dark;
+    const colors = resolvedTheme === 'light' ? preset.light : preset.dark;
     const root = document.documentElement;
     root.style.setProperty('--bg-primary', colors.primary);
     root.style.setProperty('--bg-secondary', colors.secondary);
     root.style.setProperty('--bg-tertiary', colors.tertiary);
     root.style.setProperty('--glow-primary', colors.glowPrimary);
     root.style.setProperty('--glow-secondary', colors.glowSecondary);
-  }, [settings.backgroundColor, settings.theme]);
+  }, [settings.backgroundColor, resolvedTheme]);
 
-  // 重点色 — 仅影响强调元素（按钮、高亮、链接），不改变背景
+  // 重点色 — 仅影响强调元素
   useEffect(() => {
-    const preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.rose;
+    const preset = ACCENT_PRESETS[settings.accentColor] || ACCENT_PRESETS.ocean;
     const root = document.documentElement;
     root.style.setProperty('--accent-mint', preset.primary);
     root.style.setProperty('--accent-ocean', preset.secondary);

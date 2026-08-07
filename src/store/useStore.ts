@@ -1,6 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AppSettings, ViewMode } from '../types';
+import type { AppSettings, ViewMode, ResolvedTheme } from '../types';
+
+// 检测系统深浅模式
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'dark';
+}
+
+// 解析 theme：auto → 跟随系统，dark/light → 直接使用
+export function resolveTheme(theme: string): ResolvedTheme {
+  if (theme === 'auto') return getSystemTheme();
+  return theme as ResolvedTheme;
+}
 
 interface AppState {
   currentPage: string;
@@ -12,6 +26,7 @@ interface AppState {
   showFavorites: boolean;
   showAllNotes: boolean;
   settings: AppSettings;
+  resolvedTheme: ResolvedTheme;
 
   setCurrentPage: (page: string) => void;
   navigateTo: (page: string) => void;
@@ -22,13 +37,14 @@ interface AppState {
   setSearchQuery: (q: string) => void;
   setShowFavorites: (v: boolean) => void;
   setShowAllNotes: (v: boolean) => void;
-  toggleTheme: () => void;
+  setTheme: (theme: AppSettings['theme']) => void;
+  setResolvedTheme: (theme: ResolvedTheme) => void;
   setViewMode: (mode: ViewMode) => void;
   updateSettings: (s: Partial<AppSettings>) => void;
 }
 
 const defaultSettings: AppSettings = {
-  theme: 'dark',
+  theme: 'auto',
   viewMode: 'list',
   defaultFolderId: null,
   fontSize: 'medium',
@@ -54,6 +70,7 @@ export const useStore = create<AppState>()(
       showFavorites: false,
       showAllNotes: false,
       settings: defaultSettings,
+      resolvedTheme: getSystemTheme(),
 
       setCurrentPage: (page) => set({ currentPage: page }),
       navigateTo: (page) => set((s) => {
@@ -64,7 +81,6 @@ export const useStore = create<AppState>()(
         if (s.pageHistory.length === 0) return { currentPage: 'home', showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null };
         const history = [...s.pageHistory];
         const prev = history.pop()!;
-        // 返回首页时重置所有筛选状态
         if (prev === 'home') return { currentPage: prev, pageHistory: history, showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null };
         return { currentPage: prev, pageHistory: history };
       }),
@@ -74,24 +90,27 @@ export const useStore = create<AppState>()(
       setSearchQuery: (q) => set({ searchQuery: q }),
       setShowFavorites: (v) => set({ showFavorites: v, showAllNotes: false, selectedFolderId: null, selectedTagId: null }),
       setShowAllNotes: (v) => set({ showAllNotes: v, showFavorites: false, selectedFolderId: null, selectedTagId: null }),
-      toggleTheme: () => set((s) => ({ settings: { ...s.settings, theme: s.settings.theme === 'dark' ? 'light' : 'dark' } })),
+      setTheme: (theme) => set((s) => ({ settings: { ...s.settings, theme }, resolvedTheme: resolveTheme(theme) })),
+      setResolvedTheme: (theme) => set({ resolvedTheme: theme }),
       setViewMode: (mode) => set((s) => ({ settings: { ...s.settings, viewMode: mode } })),
       updateSettings: (ns) => set((s) => ({ settings: { ...s.settings, ...ns } })),
     }),
     {
       name: 'memoflow-store',
-      version: 4,
+      version: 5,
       partialize: (s) => ({
         ...s,
-        pageHistory: [], // 不持久化页面历史
+        pageHistory: [],
       }),
       migrate: (persistedState: unknown, version: number) => {
         const s = persistedState as Partial<AppState>;
-        // v4: 统一为新的默认配色（海洋重点色 + 海洋背景色）
-        const VALID = ['mint', 'ocean', 'sunset', 'rose', 'violet'];
+        const VALID_ACCENT = ['mint', 'ocean', 'sunset', 'rose', 'violet'];
+        const VALID_THEME = ['auto', 'dark', 'light'];
         if (s.settings) {
-          if (!VALID.includes(s.settings.accentColor)) s.settings.accentColor = 'ocean';
-          if (!VALID.includes(s.settings.backgroundColor)) s.settings.backgroundColor = 'ocean';
+          if (!VALID_ACCENT.includes(s.settings.accentColor)) s.settings.accentColor = 'ocean';
+          if (!VALID_ACCENT.includes(s.settings.backgroundColor)) s.settings.backgroundColor = 'ocean';
+          // v5: 旧用户的 theme 若不合法（如被移除的值）归为 auto
+          if (!VALID_THEME.includes(s.settings.theme)) s.settings.theme = 'auto';
         }
         return s as AppState;
       },
