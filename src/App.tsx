@@ -30,8 +30,8 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     light: { primary: '#f0f7f6', secondary: '#ffffff', tertiary: '#e6efee', glowPrimary: '#5eead4', glowSecondary: '#99f6e0' },
   },
   ocean: {
-    dark:  { primary: '#0c1626', secondary: '#13203a', tertiary: '#1a2a4d', glowPrimary: '#38bdf8', glowSecondary: '#818cf8' },
-    light: { primary: '#eaf2fd', secondary: '#ffffff', tertiary: '#dce8f8', glowPrimary: '#7dd3fc', glowSecondary: '#a5b4fc' },
+    dark:  { primary: '#0a1e30', secondary: '#0f2742', tertiary: '#143252', glowPrimary: '#38bdf8', glowSecondary: '#818cf8' },
+    light: { primary: '#d9ecfb', secondary: '#ffffff', tertiary: '#c8e0f6', glowPrimary: '#38bdf8', glowSecondary: '#818cf8' },
   },
   sunset: {
     dark:  { primary: '#1a0f08', secondary: '#1f140c', tertiary: '#271a10', glowPrimary: '#fb923c', glowSecondary: '#f43f5e' },
