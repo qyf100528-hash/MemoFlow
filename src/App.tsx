@@ -16,22 +16,24 @@ import { Settings } from './pages/Settings';
 import type { AccentColor } from './types';
 
 const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; gradient: string }> = {
-  mint:   { primary: '#2dd4bf', secondary: '#38bdf8', gradient: 'linear-gradient(135deg, #2dd4bf, #0ea5e9)' },
-  ocean:  { primary: '#38bdf8', secondary: '#818cf8', gradient: 'linear-gradient(135deg, #38bdf8, #6366f1)' },
+  mint:   { primary: '#34d399', secondary: '#2dd4bf', gradient: 'linear-gradient(135deg, #34d399, #2dd4bf)' },
+  ocean:  { primary: '#06b6d4', secondary: '#3b82f6', gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)' },
   sunset: { primary: '#fb923c', secondary: '#f43f5e', gradient: 'linear-gradient(135deg, #fb923c, #f43f5e)' },
   rose:   { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #a855f7)' },
-  violet: { primary: '#a78bfa', secondary: '#22d3ee', gradient: 'linear-gradient(135deg, #a78bfa, #06b6d4)' },
+  violet: { primary: '#a78bfa', secondary: '#7c3aed', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
+  black:  { primary: '#3a3a3c', secondary: '#48484a', gradient: 'linear-gradient(135deg, #3a3a3c, #1c1c1e)' },
+  white:  { primary: '#f5f5f7', secondary: '#e5e5ea', gradient: 'linear-gradient(135deg, #f5f5f7, #d1d1d6)' },
 };
 
-// 背景色预设 — 与重点色同 5 个选项，每个定义深/浅模式的背景色调与光晕色
+// 背景色预设 — 7 种，与重点色同选项，可互相搭配
 const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string }; light: { primary: string; secondary: string; tertiary: string; glowPrimary: string; glowSecondary: string } }> = {
   mint: {
-    dark:  { primary: '#0a1418', secondary: '#0f1a1e', tertiary: '#152227', glowPrimary: '#2dd4bf', glowSecondary: '#38bdf8' },
-    light: { primary: '#f0f7f6', secondary: '#ffffff', tertiary: '#e6efee', glowPrimary: '#5eead4', glowSecondary: '#99f6e0' },
+    dark:  { primary: '#0a1418', secondary: '#0f1a1e', tertiary: '#152227', glowPrimary: '#34d399', glowSecondary: '#2dd4bf' },
+    light: { primary: '#f0f7f6', secondary: '#ffffff', tertiary: '#e6efee', glowPrimary: '#6ee7b7', glowSecondary: '#5eead4' },
   },
   ocean: {
-    dark:  { primary: '#0a1e30', secondary: '#0f2742', tertiary: '#143252', glowPrimary: '#38bdf8', glowSecondary: '#818cf8' },
-    light: { primary: '#d9ecfb', secondary: '#ffffff', tertiary: '#c8e0f6', glowPrimary: '#38bdf8', glowSecondary: '#818cf8' },
+    dark:  { primary: '#0a1a24', secondary: '#0f202e', tertiary: '#142838', glowPrimary: '#06b6d4', glowSecondary: '#3b82f6' },
+    light: { primary: '#eef5fb', secondary: '#ffffff', tertiary: '#e0ecf6', glowPrimary: '#22d3ee', glowSecondary: '#60a5fa' },
   },
   sunset: {
     dark:  { primary: '#1a0f08', secondary: '#1f140c', tertiary: '#271a10', glowPrimary: '#fb923c', glowSecondary: '#f43f5e' },
@@ -42,8 +44,16 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     light: { primary: '#fbf0f5', secondary: '#ffffff', tertiary: '#f6e6ee', glowPrimary: '#f9a8d4', glowSecondary: '#fbcfe8' },
   },
   violet: {
-    dark:  { primary: '#0e0a1a', secondary: '#130f22', tertiary: '#191530', glowPrimary: '#a78bfa', glowSecondary: '#22d3ee' },
+    dark:  { primary: '#0e0a1a', secondary: '#130f22', tertiary: '#191530', glowPrimary: '#a78bfa', glowSecondary: '#7c3aed' },
     light: { primary: '#f4f0fb', secondary: '#ffffff', tertiary: '#ebe6f6', glowPrimary: '#c4b5fd', glowSecondary: '#ddd6fe' },
+  },
+  black: {
+    dark:  { primary: '#000000', secondary: '#0a0a0a', tertiary: '#141414', glowPrimary: '#3a3a3c', glowSecondary: '#48484a' },
+    light: { primary: '#1c1c1e', secondary: '#2c2c2e', tertiary: '#3a3a3c', glowPrimary: '#48484a', glowSecondary: '#636366' },
+  },
+  white: {
+    dark:  { primary: '#f5f5f7', secondary: '#ffffff', tertiary: '#e5e5ea', glowPrimary: '#e5e5ea', glowSecondary: '#d1d1d6' },
+    light: { primary: '#ffffff', secondary: '#ffffff', tertiary: '#f5f5f7', glowPrimary: '#d1d1d6', glowSecondary: '#c7c7cc' },
   },
 };
 

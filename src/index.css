@@ -4,16 +4,16 @@
 
 :root {
   /* ============ Apple HIG 动态颜色系统 — 深色模式 ============ */
-  /* 背景：深炭灰，非纯黑，保留空气感 */
-  --bg-primary: #0c1016;
-  --bg-secondary: #131820;
-  --bg-tertiary: #1a2129;
+  /* 背景：iOS Dark Mode 标准深灰黑，非纯黑，保留空气感 */
+  --bg-primary: #0f1115;
+  --bg-secondary: #151820;
+  --bg-tertiary: #1c1f26;
 
   /* 语义化层级 — Surface/Card/Elevated 逐级提亮，营造空间深度 */
-  --color-background: #0c1016;
-  --color-surface: #131820;
-  --color-card: #1a2129;
-  --color-elevated: #232c38;
+  --color-background: #0f1115;
+  --color-surface: #151820;
+  --color-card: #1c1f26;
+  --color-elevated: #252830;
 
   /* 玻璃材质 — 深色模式：低透明白 + 强模糊 */
   --glass-bg: rgba(255, 255, 255, 0.055);
@@ -26,25 +26,24 @@
   --text-secondary: rgba(255, 255, 255, 0.56);
   --text-tertiary: rgba(255, 255, 255, 0.38);
 
-  /* 分割线 — 极淡 */
+  /* 分割线 */
   --color-divider: rgba(255, 255, 255, 0.08);
 
-  /* 重点色 — 默认海洋：蓝 #38bdf8 + 紫 #818cf8 */
-  --accent-mint: #38bdf8;
-  --accent-ocean: #818cf8;
-  --accent-gradient: linear-gradient(135deg, #38bdf8, #6366f1);
+  /* 重点色 — 默认海洋：蓝绿 #06b6d4 + #3b82f6 */
+  --accent-mint: #06b6d4;
+  --accent-ocean: #3b82f6;
+  --accent-gradient: linear-gradient(135deg, #06b6d4, #3b82f6);
 
-  /* 阴影系统 — 深色模式：柔和环境阴影 + 内发光 */
+  /* 阴影系统 — 深色模式：柔和环境阴影 */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.24);
-  --shadow-glow: 0 0 24px rgba(56, 189, 248, 0.25);
-  /* 内高光 — 深色模式卡片顶部微光 */
+  --shadow-glow: 0 0 24px rgba(6, 182, 212, 0.25);
   --inset-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
 
   /* 背景光晕 */
-  --glow-primary: #38bdf8;
-  --glow-secondary: #818cf8;
+  --glow-primary: #06b6d4;
+  --glow-secondary: #3b82f6;
 
   /* iOS 连续曲率圆角 */
   --radius-sm: 10px;
@@ -55,10 +54,10 @@
 
 :root.light {
   /* ============ Apple HIG 动态颜色系统 — 浅色模式 ============ */
-  /* 背景：柔和暖白，非纯白，纸质质感 */
+  /* 背景：iOS 浅色模式标准暖白 */
   --bg-primary: #f5f5f7;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #ececef;
+  --bg-tertiary: #f2f2f7;
 
   /* 语义化层级 — 浅色模式：逐级提亮至纯白 */
   --color-background: #f5f5f7;
@@ -66,7 +65,7 @@
   --color-card: #ffffff;
   --color-elevated: #ffffff;
 
-  /* 玻璃材质 — 浅色模式：高透明白 + 柔和模糊，保留空气感 */
+  /* 玻璃材质 — 浅色模式：高透明白 + 柔和模糊 */
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-bg-hover: rgba(255, 255, 255, 0.88);
   --glass-border: rgba(0, 0, 0, 0.06);
@@ -80,17 +79,16 @@
   /* 分割线 */
   --color-divider: rgba(0, 0, 0, 0.08);
 
-  /* 阴影系统 — 浅色模式：极柔和，避免生硬 */
+  /* 阴影系统 — 浅色模式：极柔和 */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-glow: 0 0 24px rgba(56, 189, 248, 0.14);
-  /* 内高光 — 浅色模式顶部强光泽 */
+  --shadow-glow: 0 0 24px rgba(6, 182, 212, 0.14);
   --inset-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.6);
 
-  /* 光晕色 — 浅色模式更柔和 */
-  --glow-primary: #7dd3fc;
-  --glow-secondary: #a5b4fc;
+  /* 光晕色 */
+  --glow-primary: #22d3ee;
+  --glow-secondary: #60a5fa;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -185,7 +183,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-divider); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-mint); opacity: 0.5; }
-::selection { background: rgba(56, 189, 248, 0.3); color: var(--text-primary); }
+::selection { background: rgba(6, 182, 212, 0.3); color: var(--text-primary); }
 
 textarea, input { outline: none; border: none; background: transparent; color: var(--text-primary); font-family: inherit; }
 textarea { -webkit-overflow-scrolling: touch; touch-action: pan-y; }
@@ -223,7 +221,7 @@ textarea:focus, input:focus { outline: none; }
 .markdown-body p { margin: 0.5rem 0; line-height: 1.7; }
 .markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; }
 .markdown-body li { margin: 0.3rem 0; line-height: 1.6; }
-.markdown-body code { background: rgba(56, 189, 248, 0.1); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; font-family: 'SF Mono', ui-monospace, monospace; }
+.markdown-body code { background: rgba(6, 182, 212, 0.1); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; font-family: 'SF Mono', ui-monospace, monospace; }
 .markdown-body pre { background: rgba(0, 0, 0, 0.28); border-radius: var(--radius-md); padding: 1rem; overflow-x: auto; margin: 0.8rem 0; }
 .markdown-body pre code { background: transparent; padding: 0; }
 .markdown-body blockquote { border-left: 2px solid var(--accent-mint); padding-left: 1rem; margin: 0.8rem 0; opacity: 0.75; }

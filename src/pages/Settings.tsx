@@ -9,22 +9,26 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { hasApiKey } from '../lib/ai/deepseek';
 import type { AccentColor } from '../types';
 
-// 5 种重点色 — 与 App.tsx 中 ACCENT_PRESETS 保持一致
+// 7 种重点色 — 与 App.tsx 中 ACCENT_PRESETS 保持一致
 const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
-  { id: 'mint',   label: '薄荷',  primary: '#2dd4bf', secondary: '#38bdf8' },
-  { id: 'ocean',  label: '海洋',  primary: '#38bdf8', secondary: '#818cf8' },
+  { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
+  { id: 'ocean',  label: '海洋',  primary: '#06b6d4', secondary: '#3b82f6' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
-  { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#22d3ee' },
+  { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
+  { id: 'black',  label: '墨黑',  primary: '#3a3a3c', secondary: '#48484a' },
+  { id: 'white',  label: '皓白',  primary: '#f5f5f7', secondary: '#e5e5ea' },
 ];
 
-// 背景色 — 与重点色相同的 5 个选项，可自由搭配组合
+// 背景色 — 与重点色相同的 7 个选项，可自由搭配组合
 const BG_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
-  { id: 'mint',   label: '薄荷',  primary: '#2dd4bf', secondary: '#38bdf8' },
-  { id: 'ocean',  label: '海洋',  primary: '#38bdf8', secondary: '#818cf8' },
+  { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
+  { id: 'ocean',  label: '海洋',  primary: '#06b6d4', secondary: '#3b82f6' },
   { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
-  { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#22d3ee' },
+  { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
+  { id: 'black',  label: '墨黑',  primary: '#3a3a3c', secondary: '#48484a' },
+  { id: 'white',  label: '皓白',  primary: '#f5f5f7', secondary: '#e5e5ea' },
 ];
 
 export function Settings() {
@@ -81,7 +85,7 @@ export function Settings() {
               </div>
             </div>
 
-            {/* 重点色 — 5 种自定义配色 */}
+            {/* 重点色 — 7 种自定义配色 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -91,7 +95,7 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">选择应用的主色调</p>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-2 sm:gap-3">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                 {ACCENT_COLORS.map((c) => {
                   const active = settings.accentColor === c.id;
                   return (
@@ -130,7 +134,7 @@ export function Settings() {
               </div>
             </div>
 
-            {/* 背景色 — 与重点色相同的 5 个选项，可自由搭配 */}
+            {/* 背景色 — 与重点色相同的 7 个选项，可自由搭配 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -140,7 +144,7 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">选择应用的背景色调，可与重点色自由搭配</p>
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-2 sm:gap-3">
+              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                 {BG_COLORS.map((bg) => {
                   const active = settings.backgroundColor === bg.id;
                   return (

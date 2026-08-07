@@ -110,7 +110,7 @@ export type ThemeMode = 'auto' | 'dark' | 'light';
 export type ResolvedTheme = 'dark' | 'light';
 export type ViewMode = 'grid' | 'list' | 'kanban' | 'timeline';
 
-export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet';
+export type AccentColor = 'mint' | 'ocean' | 'sunset' | 'rose' | 'violet' | 'black' | 'white';
 
 export interface AppSettings {
   theme: ThemeMode;

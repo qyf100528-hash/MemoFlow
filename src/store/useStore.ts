@@ -97,19 +97,18 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'memoflow-store',
-      version: 5,
+      version: 6,
       partialize: (s) => ({
         ...s,
         pageHistory: [],
       }),
       migrate: (persistedState: unknown, version: number) => {
         const s = persistedState as Partial<AppState>;
-        const VALID_ACCENT = ['mint', 'ocean', 'sunset', 'rose', 'violet'];
+        const VALID_ACCENT = ['mint', 'ocean', 'sunset', 'rose', 'violet', 'black', 'white'];
         const VALID_THEME = ['auto', 'dark', 'light'];
         if (s.settings) {
           if (!VALID_ACCENT.includes(s.settings.accentColor)) s.settings.accentColor = 'ocean';
           if (!VALID_ACCENT.includes(s.settings.backgroundColor)) s.settings.backgroundColor = 'ocean';
-          // v5: 旧用户的 theme 若不合法（如被移除的值）归为 auto
           if (!VALID_THEME.includes(s.settings.theme)) s.settings.theme = 'auto';
         }
         return s as AppState;
