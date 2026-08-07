@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor } from 'lucide-react';
+import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor, Droplet } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { createTemplate, deleteTemplate } from '../lib/templates';
@@ -54,34 +54,68 @@ export function Settings() {
           </h2>
 
           <div className="space-y-4">
-            {/* 主题 — 三档分段控制器：自动/深色/浅色 */}
+            {/* 主题 — 三档分段控制器 + 自定义按钮 */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <label className="text-sm font-medium text-[var(--text-primary)]">主题模式</label>
                 <p className="text-xs text-[var(--text-secondary)] mt-0.5">自动跟随系统，或手动选择</p>
               </div>
-              <div className="ios-segment flex p-1 gap-0.5 shrink-0">
-                {([
-                  { mode: 'auto' as const, icon: Monitor, label: '自动' },
-                  { mode: 'dark' as const, icon: Moon, label: '深色' },
-                  { mode: 'light' as const, icon: Sun, label: '浅色' },
-                ]).map(({ mode, icon: Icon, label }) => (
-                  <button
-                    key={mode}
-                    onClick={() => setTheme(mode)}
-                    className={`ios-segment-btn px-3 py-1.5 rounded-[13px] text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
-                      settings.theme === mode
-                        ? 'active text-[var(--text-primary)]'
-                        : 'text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    <Icon size={14} /> {label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="ios-segment flex p-1 gap-0.5">
+                  {([
+                    { mode: 'auto' as const, icon: Monitor, label: '自动' },
+                    { mode: 'dark' as const, icon: Moon, label: '深色' },
+                    { mode: 'light' as const, icon: Sun, label: '浅色' },
+                  ]).map(({ mode, icon: Icon, label }) => (
+                    <button
+                      key={mode}
+                      onClick={() => setTheme(mode)}
+                      className={`ios-segment-btn px-3 py-1.5 rounded-[13px] text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                        settings.theme === mode
+                          ? 'active text-[var(--text-primary)]'
+                          : 'text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <Icon size={14} /> {label}
+                    </button>
+                  ))}
+                </div>
+                {/* 自定义按钮 — 紧挨浅色旁边 */}
+                <button
+                  onClick={() => {
+                    const next = (settings.accentColor === 'custom' && settings.backgroundColor === 'custom') ? 'preset' : 'custom';
+                    if (next === 'custom') {
+                      updateSettings({ accentColor: 'custom', backgroundColor: 'custom' });
+                    } else {
+                      updateSettings({ accentColor: 'rose', backgroundColor: 'ocean' });
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-[13px] text-xs font-medium flex items-center gap-1.5 transition-all whitespace-nowrap ${
+                    settings.accentColor === 'custom' || settings.backgroundColor === 'custom'
+                      ? 'btn-primary'
+                      : 'glass text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Droplet size={14} /> 自定义
+                </button>
               </div>
             </div>
 
-            {/* 重点色 — 5 种预设 + 自定义 */}
+            {/* 自定义颜色选择器 — 展开式 */}
+            {(settings.accentColor === 'custom' || settings.backgroundColor === 'custom') && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex items-center gap-6 pt-1">
+                <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  重点色
+                  <input type="color" value={settings.customAccent.primary} onChange={(e) => updateSettings({ customAccent: { ...settings.customAccent, primary: e.target.value, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                </label>
+                <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                  背景色
+                  <input type="color" value={settings.customBg.primary} onChange={(e) => updateSettings({ customBg: { ...settings.customBg, primary: e.target.value, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
+                </label>
+              </motion.div>
+            )}
+
+            {/* 重点色 — 5 种预设 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -91,7 +125,7 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">选择应用的主色调</p>
                 </div>
               </div>
-              <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-5 gap-2 sm:gap-3">
                 {ACCENT_COLORS.map((c) => {
                   const active = settings.accentColor === c.id;
                   return (
@@ -126,50 +160,10 @@ export function Settings() {
                     </button>
                   );
                 })}
-                {/* 自定义重点色 */}
-                <button
-                  onClick={() => updateSettings({ accentColor: 'custom' })}
-                  className="relative rounded-xl p-2 sm:p-3 transition-all group"
-                  style={{
-                    background: settings.accentColor === 'custom' ? `${settings.customAccent.primary}20` : 'transparent',
-                    border: `1px solid ${settings.accentColor === 'custom' ? settings.customAccent.primary : 'var(--glass-border)'}`,
-                  }}
-                >
-                  <div
-                    className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden flex items-center justify-center"
-                    style={{ background: `linear-gradient(135deg, ${settings.customAccent.primary}, ${settings.customAccent.secondary})` }}
-                  >
-                    {settings.accentColor === 'custom' ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
-                          <Check size={14} className="text-white" strokeWidth={3} />
-                        </motion.div>
-                      </div>
-                    ) : (
-                      <Plus size={16} className="text-white/80" />
-                    )}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-center" style={{ color: settings.accentColor === 'custom' ? settings.customAccent.primary : 'var(--text-secondary)' }}>
-                    自定义
-                  </div>
-                </button>
               </div>
-              {/* 自定义重点色选择器 */}
-              {settings.accentColor === 'custom' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    主色
-                    <input type="color" value={settings.customAccent.primary} onChange={(e) => updateSettings({ customAccent: { ...settings.customAccent, primary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    副色
-                    <input type="color" value={settings.customAccent.secondary} onChange={(e) => updateSettings({ customAccent: { ...settings.customAccent, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
-                  </label>
-                </motion.div>
-              )}
             </div>
 
-            {/* 背景色 — 5 种预设 + 自定义，可自由搭配 */}
+            {/* 背景色 — 5 种预设，可自由搭配 */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -179,7 +173,7 @@ export function Settings() {
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">可与重点色自由搭配</p>
                 </div>
               </div>
-              <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-5 gap-2 sm:gap-3">
                 {BG_COLORS.map((bg) => {
                   const active = settings.backgroundColor === bg.id;
                   return (
@@ -214,47 +208,7 @@ export function Settings() {
                     </button>
                   );
                 })}
-                {/* 自定义背景色 */}
-                <button
-                  onClick={() => updateSettings({ backgroundColor: 'custom' })}
-                  className="relative rounded-xl p-2 sm:p-3 transition-all group"
-                  style={{
-                    background: settings.backgroundColor === 'custom' ? `${settings.customBg.primary}20` : 'transparent',
-                    border: `1px solid ${settings.backgroundColor === 'custom' ? settings.customBg.primary : 'var(--glass-border)'}`,
-                  }}
-                >
-                  <div
-                    className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden flex items-center justify-center"
-                    style={{ background: `linear-gradient(135deg, ${settings.customBg.primary}, ${settings.customBg.secondary})` }}
-                  >
-                    {settings.backgroundColor === 'custom' ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center">
-                          <Check size={14} className="text-white" strokeWidth={3} />
-                        </motion.div>
-                      </div>
-                    ) : (
-                      <Plus size={16} className="text-white/80" />
-                    )}
-                  </div>
-                  <div className="text-[10px] sm:text-xs text-center" style={{ color: settings.backgroundColor === 'custom' ? settings.customBg.primary : 'var(--text-secondary)' }}>
-                    自定义
-                  </div>
-                </button>
               </div>
-              {/* 自定义背景色选择器 */}
-              {settings.backgroundColor === 'custom' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    主色
-                    <input type="color" value={settings.customBg.primary} onChange={(e) => updateSettings({ customBg: { ...settings.customBg, primary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                    副色
-                    <input type="color" value={settings.customBg.secondary} onChange={(e) => updateSettings({ customBg: { ...settings.customBg, secondary: e.target.value } })} className="w-8 h-8 rounded-lg cursor-pointer bg-transparent border border-[var(--glass-border)]" />
-                  </label>
-                </motion.div>
-              )}
             </div>
 
             {/* 视图模式 — iOS 分段控制器风格，所有按钮同行等高 */}
