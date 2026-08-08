@@ -614,34 +614,63 @@ export function Home() {
               title="最近访问"
             />
             {!isCollapsed('recent') && (
-              <div className="space-y-2">
-                {recentNotes.map((note, i) => {
-                  const folder = folders?.find(f => f.id === note.folderId);
-                  return (
-                    <motion.button
+              settings.homeViewMode === 'list' ? (
+                <div className="space-y-2">
+                  {recentNotes.map((note, i) => {
+                    const folder = folders?.find(f => f.id === note.folderId);
+                    return (
+                      <motion.button
+                        key={note.id}
+                        initial={{ opacity: 0, x: -16 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleNoteClick(note.id)}
+                        className="ios-pill-note w-full flex items-center gap-3 px-4 py-2.5 text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="typo-note-title truncate">
+                            {getDisplayTitle(note)}
+                          </div>
+                          <div className="typo-meta truncate mt-0.5">
+                            {folder ? folder.name : '本地'}
+                          </div>
+                        </div>
+                        <span className="typo-meta shrink-0">
+                          {formatRecentTime(note.updatedAt)}
+                        </span>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              ) : settings.homeViewMode === 'grid' ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                  {recentNotes.map((note, i) => (
+                    <NoteCard
                       key={note.id}
-                      initial={{ opacity: 0, x: -16 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      whileTap={{ scale: 0.98 }}
+                      note={note}
+                      tags={tags || []}
+                      folderName={folders?.find(f => f.id === note.folderId)?.name}
                       onClick={() => handleNoteClick(note.id)}
-                      className="ios-pill-note w-full flex items-center gap-3 px-4 py-2.5 text-left"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="typo-note-title truncate">
-                          {getDisplayTitle(note)}
-                        </div>
-                        <div className="typo-meta truncate mt-0.5">
-                          {folder ? folder.name : '本地'}
-                        </div>
-                      </div>
-                      <span className="typo-meta shrink-0">
-                        {formatRecentTime(note.updatedAt)}
-                      </span>
-                    </motion.button>
-                  );
-                })}
-              </div>
+                      index={i}
+                    />
+                  ))}
+                </div>
+              ) : settings.homeViewMode === 'kanban' ? (
+                <KanbanView
+                  notes={recentNotes}
+                  folders={folders || []}
+                  tags={tags || []}
+                  onNoteClick={handleNoteClick}
+                />
+              ) : (
+                <TimelineView
+                  notes={recentNotes}
+                  tags={tags || []}
+                  folderName={(note) => folders?.find(f => f.id === note.folderId)?.name}
+                  onNoteClick={handleNoteClick}
+                />
+              )
             )}
           </section>
         )}
