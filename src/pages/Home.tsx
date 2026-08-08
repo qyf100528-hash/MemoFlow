@@ -488,7 +488,7 @@ export function Home() {
             })}
           </div>
         ) : settings.homeViewMode === 'timeline' ? (
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
             {stats.map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -499,7 +499,7 @@ export function Home() {
                   transition={{ delay: i * 0.1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={stat.action}
-                  className="text-left relative"
+                  className="text-left relative overflow-hidden"
                   style={{
                     background: 'var(--glass-bg)',
                     backdropFilter: 'blur(24px) saturate(180%)',
@@ -511,11 +511,9 @@ export function Home() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '6px',
-                    paddingLeft: '20px',
                   }}
                 >
-                  <div className="absolute left-3 top-3 bottom-3 w-0.5 rounded-full" style={{ background: `${stat.color}40` }} />
-                  <div className="absolute left-2 top-3.5 w-2.5 h-2.5 rounded-full" style={{ background: stat.color }} />
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5 rounded-full" style={{ background: stat.color }} />
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
                       <Icon size={14} style={{ color: stat.color }} />
