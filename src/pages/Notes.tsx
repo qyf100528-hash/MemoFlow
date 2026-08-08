@@ -30,9 +30,7 @@ export function Notes() {
     if (showFavorites) {
       result = result.filter(n => n.isPinned);
     }
-    if (showAllNotes) {
-      result = result.filter(n => !n.isPinned);
-    }
+    // showAllNotes 不再排除置顶笔记：置顶笔记在全部笔记中也显示并置顶排序
     if (selectedFolderId) {
       result = result.filter(n => n.folderId === selectedFolderId);
     }
@@ -158,9 +156,9 @@ export function Notes() {
         </motion.div>
       ) : notes.length > 0 ? (
         <>
-          {/* 列表视图 — Apple Notes 紧凑列表风格 */}
+          {/* 列表视图 — 统一独立胶囊卡片 */}
           {settings.viewMode === 'list' && (
-            <div className="glass-card rounded-[28px] overflow-hidden">
+            <div className="space-y-2">
               {notes.map((note, i) => (
                 <NoteListItem
                   key={note.id}

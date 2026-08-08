@@ -331,6 +331,52 @@ textarea:focus, input:focus { outline: none; }
     0 6px 24px rgba(0, 0, 0, 0.14),
     inset 0 0.5px 0 rgba(255, 255, 255, 0.08);
 }
+
+/* ============ iOS 胶囊式笔记列表卡片 — Apple Notes 风格 ============ */
+.ios-pill-note {
+  /* 大圆角胶囊：横向长条，两端柔和弧度 */
+  border-radius: 28px;
+  /* 半透明玻璃材质 — 与搜索栏同质感，柔和模糊、环境光反射 */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.07) 100%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  /* 无硬边框，仅极淡内描边 */
+  border: none;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.05),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.03);
+  transition: background 0.3s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ios-pill-note:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.07) 50%, rgba(255, 255, 255, 0.1) 100%);
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.06),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.16);
+}
+:root.light .ios-pill-note {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.68) 50%, rgba(255, 255, 255, 0.78) 100%);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.06),
+    0 1px 4px rgba(0, 0, 0, 0.03),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.8);
+}
+:root.light .ios-pill-note:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0.78) 50%, rgba(255, 255, 255, 0.88) 100%);
+  box-shadow:
+    0 6px 22px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.95);
+}
+/* 触摸设备移除 hover */
+@media (hover: none) {
+  .ios-pill-note:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(255, 255, 255, 0.07) 100%); }
+  :root.light .ios-pill-note:hover { background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.68) 50%, rgba(255, 255, 255, 0.78) 100%); }
+}
 :root.light .ios-glass {
   background: rgba(255, 255, 255, 0.78);
   border: 0.5px solid rgba(0, 0, 0, 0.06);

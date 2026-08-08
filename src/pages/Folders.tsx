@@ -108,39 +108,52 @@ export function Folders() {
         </div>
       </div>
 
-      {/* 网格视图 — 卡片式 */}
+      {/* 网格视图 — 与主页笔记网格统一风格 */}
       {settings.foldersViewMode === 'grid' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {folders?.map((f, i) => {
             const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
             return (
-              <motion.button
+              <motion.div
                 key={f.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
-                whileHover={{ y: -3 }}
                 onClick={() => handleFolderClick(f.id, f.name)}
-                className="glass-card p-4 text-left flex flex-col gap-3"
+                className="cursor-pointer group flex flex-col"
               >
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
-                  <Icon size={24} style={{ color: f.color }} />
+                {/* 卡片主体 — 与笔记网格统一 */}
+                <div className="note-grid-card-inner flex flex-col">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
+                      <Icon size={15} style={{ color: f.color }} />
+                    </div>
+                    {f.id.startsWith('folder-cloud-') && (
+                      <span className="typo-caption text-[var(--accent-violet)]">云</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] leading-[1.55] flex-1">
+                    {f.id.startsWith('folder-cloud-') ? '云端同步' : '本地存储'}
+                  </p>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="typo-note-title truncate">{f.name}</div>
-                  <div className="typo-meta mt-1">
+                {/* 外部标题区 — Apple Notes 风格 */}
+                <div className="mt-1.5 px-0.5">
+                  <div className="text-xs font-semibold text-[var(--text-primary)] truncate leading-tight group-hover:text-[var(--accent-mint)] transition-colors text-center">
+                    {f.name}
+                  </div>
+                  <div className="typo-caption mt-0.5 leading-tight text-center">
                     {f.id.startsWith('folder-cloud-') ? '云端同步' : '本地'}
                   </div>
                 </div>
-              </motion.button>
+              </motion.div>
             );
           })}
         </div>
       )}
 
-      {/* 列表视图 — Apple Notes 圆润质感，与笔记列表统一 */}
+      {/* 列表视图 — 统一独立胶囊卡片 */}
       {settings.foldersViewMode === 'list' && (
-        <div className="glass-card rounded-[28px] overflow-hidden">
+        <div className="space-y-2">
           {folders?.map((f, i) => {
             const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
             return (
@@ -149,12 +162,12 @@ export function Folders() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleFolderClick(f.id, f.name)}
-                className="w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors"
-                style={i < (folders?.length || 0) - 1 ? { borderBottom: '1px solid var(--glass-border)' } : {}}
+                className="ios-pill-note w-full text-left flex items-center gap-3 px-4 py-2.5"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
-                  <Icon size={20} style={{ color: f.color }} />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
+                  <Icon size={15} style={{ color: f.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="typo-note-title truncate">{f.name}</div>

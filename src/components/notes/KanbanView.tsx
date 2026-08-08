@@ -263,7 +263,7 @@ export function KanbanView({ notes, folders, tags, onNoteClick }: Props) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4 min-h-[400px]">
+      <div className="flex gap-4 overflow-x-auto pb-4">
         {columns.map((col, colIdx) => (
           <motion.div
             key={col.id}

@@ -17,7 +17,7 @@ import { getLinkSuggestions } from '../../lib/links/link-parser';
 import type { Note as NoteType } from '../../types';
 
 export function NoteEditor() {
-  const { selectedNoteId, setSelectedNoteId, goBack, resolvedTheme } = useStore();
+  const { selectedNoteId, setSelectedNoteId, goBack, resolvedTheme, addRecentItem } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
   const cloudAccounts = useLiveQuery(() => db.cloudAccounts.filter(a => a.isConnected).toArray(), []);
@@ -27,6 +27,8 @@ export function NoteEditor() {
   const [isEditing, setIsEditing] = useState(false);
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [showTagPicker, setShowTagPicker] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#2dd4bf');
   const [showHistory, setShowHistory] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
@@ -122,9 +124,9 @@ export function NoteEditor() {
       };
       setNote(newNote);
       originalNoteRef.current = newNote;
-      // 新建笔记直接进入编辑模式，点击即可输入
+      // 新建笔记直接进入编辑模式，✓保存按钮常驻
       setIsEditing(true);
-      setHasInteracted(false);
+      setHasInteracted(true);
     }
   }, [selectedNoteId]);
 
@@ -170,6 +172,9 @@ export function NoteEditor() {
       }
       setNote(n);
       originalNoteRef.current = n;
+      // 记录到最近访问
+      const title = n.title || n.content.slice(0, 20) || '新建笔记';
+      addRecentItem(n.id, title, 'note');
       setIsEditing(false);
       setHasInteracted(false);
     } finally {
@@ -332,7 +337,14 @@ export function NoteEditor() {
   // 返回时如果有未保存的编辑，自动保存
   const handleBack = () => {
     if (isEditing && note && originalNoteRef.current) {
-      const hasChanges = note.title !== originalNoteRef.current.title || note.content !== originalNoteRef.current.content;
+      const orig = originalNoteRef.current;
+      // 比较所有可能修改的字段：标题、内容、标签、文件夹、置顶、锁定
+      const hasChanges = note.title !== orig.title
+                      || note.content !== orig.content
+                      || JSON.stringify(note.tagIds) !== JSON.stringify(orig.tagIds)
+                      || note.folderId !== orig.folderId
+                      || note.isPinned !== orig.isPinned
+                      || note.isLocked !== orig.isLocked;
       if (hasChanges) {
         handleSave();
       } else {
@@ -567,32 +579,80 @@ export function NoteEditor() {
         </>
       )}
 
-      {/* 标签选择器 — 底部 Action Sheet，z-50 */}
-      {showTagPicker && (
+      {/* 标签选择器 — 底部 Action Sheet，苹果备忘录风格，支持新建标签 */}
+      {showTagPicker && note && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShowTagPicker(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 ios-glass rounded-t-2xl p-4 pb-8 max-h-[60vh] overflow-y-auto">
-            <div className="w-10 h-1 bg-[var(--text-secondary)] rounded-full mx-auto mb-3 opacity-30" />
-            <div className="flex items-center gap-2 mb-3">
-              <TagIcon size={16} className="text-[var(--accent-mint)]" />
-              <span className="typo-label">标签</span>
+          <div className="fixed bottom-0 left-0 right-0 z-50 ios-glass rounded-t-[28px] p-5 pb-8 max-h-[70vh] overflow-y-auto">
+            <div className="w-10 h-1 bg-[var(--text-secondary)] rounded-full mx-auto mb-4 opacity-30" />
+            <div className="flex items-center gap-2 mb-4">
+              <TagIcon size={18} className="text-[var(--accent-mint)]" />
+              <span className="typo-note-title">标签</span>
               <button onClick={() => setShowTagPicker(false)} className="ml-auto typo-meta text-[var(--accent-mint)]">完成</button>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {tags?.map(t => {
-                const selected = note.tagIds.includes(t.id);
-                return (
-                  <button key={t.id} onClick={() => {
-                    const newTags = selected ? note.tagIds.filter(id => id !== t.id) : [...note.tagIds, t.id];
-                    handleChange('tagIds', newTags);
-                  }} className={`px-3 py-2 rounded-xl text-sm flex items-center gap-1.5 transition-all ${selected ? 'ios-glass-btn text-[var(--accent-mint)]' : 'ios-glass-btn text-[var(--text-secondary)]'}`}>
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: t.color }} />
-                    {t.name}
-                    {selected && <Check size={12} />}
-                  </button>
-                );
-              })}
-              {(!tags || tags.length === 0) && <span className="typo-meta">暂无标签，请在设置中创建</span>}
+
+            {/* 已有标签 — 胶囊按钮 */}
+            {tags && tags.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-4">
+                {tags.map(t => {
+                  const selected = note.tagIds.includes(t.id);
+                  return (
+                    <button key={t.id} onClick={() => {
+                      const newTags = selected ? note.tagIds.filter(id => id !== t.id) : [...note.tagIds, t.id];
+                      handleChange('tagIds', newTags);
+                    }} className={`icon-press px-3.5 py-2 rounded-full text-sm flex items-center gap-1.5 transition-all ${selected ? 'ios-glass-btn text-[var(--accent-mint)] ring-1 ring-[var(--accent-mint)]' : 'ios-glass-btn text-[var(--text-secondary)]'}`}>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: t.color }} />
+                      {t.name}
+                      {selected && <Check size={12} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 新建标签 — 输入框 + 颜色选择 + 创建按钮 */}
+            <div className="ios-pill-note overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: '0.5px solid var(--glass-border)' }}>
+                <input
+                  type="text"
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newTagName.trim()) {
+                      const tagId = `tag-${Date.now()}`;
+                      db.tags.add({ id: tagId, name: newTagName.trim(), color: newTagColor, createdAt: Date.now() });
+                      handleChange('tagIds', [...note.tagIds, tagId]);
+                      setNewTagName('');
+                    }
+                  }}
+                  placeholder="新建标签..."
+                  className="flex-1 bg-transparent border-0 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] typo-body"
+                />
+                <button
+                  onClick={() => {
+                    if (!newTagName.trim()) return;
+                    const tagId = `tag-${Date.now()}`;
+                    db.tags.add({ id: tagId, name: newTagName.trim(), color: newTagColor, createdAt: Date.now() });
+                    handleChange('tagIds', [...note.tagIds, tagId]);
+                    setNewTagName('');
+                  }}
+                  disabled={!newTagName.trim()}
+                  className="icon-press btn-primary text-xs px-3 py-1.5 rounded-full disabled:opacity-40"
+                >
+                  添加
+                </button>
+              </div>
+              {/* 颜色选择 */}
+              <div className="flex items-center gap-2.5 px-4 py-3 overflow-x-auto">
+                {['#2dd4bf', '#38bdf8', '#a78bfa', '#fbbf24', '#fb7185', '#34d399', '#f472b6', '#60a5fa'].map(color => (
+                  <button
+                    key={color}
+                    onClick={() => setNewTagColor(color)}
+                    className={`icon-press w-7 h-7 rounded-full shrink-0 transition-all ${newTagColor === color ? 'ring-2 ring-offset-2 ring-offset-transparent ring-white/50' : ''}`}
+                    style={{ background: color }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </>
