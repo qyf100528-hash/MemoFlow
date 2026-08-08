@@ -461,31 +461,148 @@ export function Home() {
           )}
         </AnimatePresence>
 
-        {/* 统计卡片 — 独立胶囊卡片，所有视图模式一致 */}
-        <div className="space-y-2 mb-5 sm:mb-6">
-          {stats.map((stat, i) => {
-            const Icon = stat.icon;
-            return (
-              <motion.button
-                key={stat.label}
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.06 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={stat.action}
-                className="ios-pill-note w-full flex items-center gap-3 px-4 py-2.5 text-left"
-              >
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
-                  <Icon size={15} style={{ color: stat.color }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="typo-label">{stat.label}</div>
-                </div>
-                <span className="typo-stat shrink-0">{stat.value}</span>
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* 统计卡片 - 随视图模式变化布局 */}
+        {settings.homeViewMode === 'list' ? (
+          <div className="space-y-2 mb-5 sm:mb-6">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <motion.button
+                  key={stat.label}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={stat.action}
+                  className="ios-pill-note w-full flex items-center gap-3 px-4 py-2.5 text-left"
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                    <Icon size={15} style={{ color: stat.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="typo-label">{stat.label}</div>
+                  </div>
+                  <span className="typo-stat shrink-0">{stat.value}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        ) : settings.homeViewMode === 'timeline' ? (
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <motion.button
+                  key={stat.label}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={stat.action}
+                  className="text-left relative"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    paddingLeft: '20px',
+                  }}
+                >
+                  <div className="absolute left-3 top-3 bottom-3 w-0.5 rounded-full" style={{ background: `${stat.color}40` }} />
+                  <div className="absolute left-2 top-3.5 w-2.5 h-2.5 rounded-full" style={{ background: stat.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={14} style={{ color: stat.color }} />
+                    </div>
+                    <span className="typo-label text-xs">{stat.label}</span>
+                  </div>
+                  <div className="typo-stat">{stat.value}</div>
+                </motion.button>
+              );
+            })}
+          </div>
+        ) : settings.homeViewMode === 'kanban' ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <motion.button
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={stat.action}
+                  className="text-left relative overflow-hidden"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: stat.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={14} style={{ color: stat.color }} />
+                    </div>
+                    <span className="typo-label text-xs">{stat.label}</span>
+                  </div>
+                  <div className="typo-stat">{stat.value}</div>
+                </motion.button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+            {stats.map((stat, i) => {
+              const Icon = stat.icon;
+              return (
+                <motion.button
+                  key={stat.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={stat.action}
+                  className="text-left"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={16} style={{ color: stat.color }} />
+                    </div>
+                    <span className="typo-label text-xs">{stat.label}</span>
+                  </div>
+                  <div className="typo-stat">{stat.value}</div>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
 
         {/* 最近访问 — 紧凑竖向列表，一行一个，胶囊样式 */}
         {recentNotes.length > 0 && (
