@@ -480,9 +480,9 @@ export function Home() {
                     <Icon size={15} style={{ color: stat.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="typo-label">{stat.label}</div>
+                    <div className="typo-note-title truncate">{stat.label}</div>
+                    <div className="typo-meta mt-0.5">{stat.value} 条</div>
                   </div>
-                  <span className="typo-stat shrink-0">{stat.value}</span>
                 </motion.button>
               );
             })}
