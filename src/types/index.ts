@@ -117,6 +117,7 @@ export interface AppSettings {
   theme: ThemeMode;
   viewMode: ViewMode;
   homeViewMode: ViewMode;
+  foldersViewMode: 'list' | 'grid';
   defaultFolderId: string | null;
   fontSize: 'small' | 'medium' | 'large';
   autoSave: boolean;

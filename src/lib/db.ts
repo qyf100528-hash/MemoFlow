@@ -45,7 +45,7 @@ export async function seedDatabase() {
   await db.notes.bulkAdd([
     {
       id: 'note-welcome', title: '欢迎使用 MemoFlow',
-      content: '# 欢迎使用 MemoFlow\n\n**让你的记忆，自由流动。**\n\nMemoFlow 是一个极简而强大的备忘录应用，核心区别在于：\n\n- 📦 **自由导入导出** — 不被任何生态锁定\n- ☁️ **多云盘同步** — 百度网盘、Google Drive、夸克、OneDrive\n- 🔒 **数据自主** — 你的笔记永远属于你\n- ✨ **极简设计** — 玻璃拟态美学\n\n## 快速开始\n\n1. 点击左上角 **+** 创建新笔记\n2. 使用 **Markdown** 格式编辑\n3. 在 **云同步** 页面连接你的网盘\n4. 在 **数据迁移** 页面导入已有笔记\n\n> 提示：支持从 Apple Notes、Markdown、TXT、PDF、JSON 导入',
+      content: '欢迎使用 MemoFlow\n\n让你的记忆，自由流动。\n\nMemoFlow 是一个极简而强大的备忘录应用，核心区别在于：\n\n📦 自由导入导出 — 不被任何生态锁定\n☁️ 多云盘同步 — 百度网盘、Google Drive、夸克、OneDrive\n🔒 数据自主 — 你的笔记永远属于你\n✨ 极简设计 — 玻璃拟态美学\n\n快速开始\n\n1. 点击右下角 + 创建新笔记\n2. 在云同步页面连接你的网盘\n3. 在数据迁移页面导入已有笔记\n\n提示：支持从 Apple Notes、TXT、PDF、JSON 导入',
       plainText: '欢迎使用 MemoFlow 让你的记忆自由流动',
       folderId: 'folder-local', tagIds: [],
       isPinned: true, isLocked: false, isArchived: false, isEncrypted: false,
@@ -53,7 +53,7 @@ export async function seedDatabase() {
     },
     {
       id: 'note-shortcuts', title: 'Markdown 快捷语法',
-      content: '# Markdown 快捷语法\n\n## 标题\n`# H1` `## H2` `### H3`\n\n## 文字格式\n- **粗体**: `**文字**`\n- *斜体*: `*文字*`\n- ~~删除线~~: `~~文字~~`\n\n## 列表\n1. 有序列表\n2. 第二项\n\n- 无序列表\n- 另一项\n\n## 引用\n> 这是一段引用\n\n## 代码块\n```javascript\nconsole.log("Hello MemoFlow");\n```\n\n## 表格\n| 格式 | 支持导出 |\n|------|--------|\n| Markdown | ✅ |\n| PDF | ✅ |\n| JSON | ✅ |',
+      content: '快捷语法参考\n\n标题：直接输入文字作为首行即可成为标题\n\n文字格式：直接书写即可，保持简洁\n\n列表\n1. 有序列表\n2. 第二项\n\n无序列表\n· 项目一\n· 项目二\n\n引用：用缩进或破折号开头表示引用\n\n代码：直接粘贴代码片段即可\n\n表格：用空格对齐即可\n格式  支持导出\nTXT  ✅\nPDF  ✅\nJSON ✅',
       plainText: 'Markdown 快捷语法 标题 粗体 斜体 列表 引用 代码块 表格',
       folderId: 'folder-work', tagIds: [],
       isPinned: false, isLocked: false, isArchived: false, isEncrypted: false,
@@ -61,7 +61,7 @@ export async function seedDatabase() {
     },
     {
       id: 'note-ideas', title: '产品灵感记录',
-      content: '# 产品灵感\n\n## 核心理念\n> 让你的记忆，自由流动。\n\n## 差异化\n1. **多云盘** — 不是单一生态的附庸\n2. **导入导出** — 数据迁移零摩擦\n3. **AI 第二大脑** — 智能整理知识\n\n## 下一步\n- [x] MVP 核心功能\n- [ ] AI 自动标签\n- [ ] AI 内容摘要\n- [ ] 端到端加密',
+      content: '产品灵感\n\n核心理念：让你的记忆，自由流动。\n\n差异化\n1. 多云盘 — 不是单一生态的附庸\n2. 导入导出 — 数据迁移零摩擦\n3. AI 第二大脑 — 智能整理知识\n\n下一步\n· MVP 核心功能（已完成）\n· AI 自动标签\n· AI 内容摘要\n· 端到端加密',
       plainText: '产品灵感 核心理念 多云盘 导入导出 AI 第二大脑',
       folderId: 'folder-ideas', tagIds: [],
       isPinned: false, isLocked: false, isArchived: false, isEncrypted: false,
@@ -147,19 +147,13 @@ export async function seedTemplates() {
       name: '日记',
       icon: '📅',
       description: '记录今天',
-      content: `# 📅 {{date}}
+      content: `📅 {{date}}
 
-## 心情
+心情：
+今日记录：
 
-
-## 今日记录
-
-
-## 感恩
--
-
-## 明日计划
-- [ ] `,
+感恩：
+明日计划：`,
       category: 'diary',
       isBuiltIn: true,
       createdAt: now,
@@ -170,27 +164,20 @@ export async function seedTemplates() {
       name: '会议记录',
       icon: '👥',
       description: '高效会议',
-      content: `# 📋 会议记录
+      content: `📋 会议记录
 
-**日期：** {{date}}
-**参会人：**
-**地点：**
+日期：{{date}}
+参会人：
+地点：
 
-## 议题
-1.
+议题：
 
-## 讨论
+讨论：
 
+决议：
 
-## 决议
--
-
-## 待办事项
-- [ ] @某人 — 事项描述
-- [ ] @某人 — 事项描述
-
----
-> 下次会议：`,
+待办事项：
+下次会议：`,
       category: 'meeting',
       isBuiltIn: true,
       createdAt: now,
@@ -201,23 +188,14 @@ export async function seedTemplates() {
       name: '待办清单',
       icon: '✅',
       description: '今日任务',
-      content: `# ✅ 待办清单
+      content: `✅ 待办清单
 
-**{{date}}**
+{{date}}
 
-## 今日任务
-- [ ]
-- [ ]
-- [ ]
-
-## 进行中
-- [ ]
-
-## 已完成
-- [x]
-
-## 备注
-`,
+今日任务：
+进行中：
+已完成：
+备注：`,
       category: 'todo',
       isBuiltIn: true,
       createdAt: now,
@@ -228,23 +206,19 @@ export async function seedTemplates() {
       name: '读书笔记',
       icon: '📖',
       description: '深度阅读',
-      content: `# 📖 《书名》
+      content: `📖 《书名》
 
-**作者：**
-**阅读日期：** {{date}}
-**评分：** ⭐⭐⭐⭐⭐
+作者：
+阅读日期：{{date}}
+评分：⭐⭐⭐⭐⭐
 
-## 核心观点
+核心观点：
 
+精彩摘录：
 
-## 精彩摘录
->
+个人感悟：
 
-## 个人感悟
-
-
-## 行动计划
-- [ ] `,
+行动计划：`,
       category: 'reading',
       isBuiltIn: true,
       createdAt: now,
@@ -255,31 +229,23 @@ export async function seedTemplates() {
       name: '项目计划',
       icon: '🚀',
       description: '项目启动',
-      content: `# 🚀 项目名称
+      content: `🚀 项目名称
 
-**开始日期：** {{date}}
-**负责人：**
-**状态：** 规划中
+开始日期：{{date}}
+负责人：
+状态：规划中
 
-## 项目概述
+项目概述：
 
-
-## 目标
+目标：
 1.
 2.
 3.
 
-## 里程碑
-| 阶段 | 截止日期 | 状态 |
-|------|---------|------|
-|  |  |  |
+里程碑：
+任务分解：
 
-## 任务分解
-- [ ]
-- [ ]
-
-## 风险与依赖
-- `,
+风险与依赖：`,
       category: 'project',
       isBuiltIn: true,
       createdAt: now,

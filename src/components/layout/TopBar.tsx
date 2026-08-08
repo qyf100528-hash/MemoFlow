@@ -35,7 +35,7 @@ export function TopBar() {
 
       <button
         onClick={toggleTheme}
-        className="glass w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+        className="icon-press glass w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
       >
         {settings.theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link2, ArrowUpRight, FileText } from 'lucide-react';
 import { findBacklinks } from '../../lib/links/link-parser';
+import { getDisplayTitle } from '../../lib/note-utils';
 import type { Note } from '../../types';
 
 interface Props {
@@ -53,7 +54,7 @@ export function BacklinksPanel({ noteId, onNoteClick }: Props) {
                 <div className="flex items-center gap-2">
                   <FileText size={12} className="text-[var(--accent-ocean)]" />
                   <span className="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-mint)] transition-colors">
-                    {note.title || '无标题'}
+                    {getDisplayTitle(note)}
                   </span>
                 </div>
                 <ArrowUpRight size={12} className="text-[var(--text-secondary)] opacity-0 group-hover:opacity-100 transition-opacity" />

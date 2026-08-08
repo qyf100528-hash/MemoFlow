@@ -9,17 +9,9 @@ import { NoteCard } from '../components/notes/NoteCard';
 import { NoteListItem } from '../components/notes/NoteListItem';
 import { KanbanView } from '../components/notes/KanbanView';
 import { TimelineView } from '../components/notes/TimelineView';
-import type { CloudProvider } from '../types';
-
-const CLOUD_NAMES: Record<CloudProvider, string> = {
-  baidu: '百度网盘',
-  google: 'Google Drive',
-  quark: '夸克网盘',
-  onedrive: 'OneDrive',
-};
 
 export function Home() {
-  const { settings, setHomeViewMode, navigateTo, setSelectedNoteId, setShowAllNotes, setShowFavorites, notesCache, setNotesCache, toggleSectionCollapse, setSelectedFolderId, addRecentItem } = useStore();
+  const { settings, setHomeViewMode, navigateTo, setSelectedNoteId, setShowAllNotes, setShowFavorites, notesCache, setNotesCache, toggleSectionCollapse, setSelectedFolderId, addRecentItem, homeTitleCollapsed, setHomeTitleCollapsed, recentItems } = useStore();
   const [showViewPicker, setShowViewPicker] = useState(false);
   const [showFolderCreator, setShowFolderCreator] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -65,8 +57,17 @@ export function Home() {
     return sorted;
   }, [rawNotes, notesCache]);
 
-  const pinnedNotes = notes?.filter(n => n.isPinned).slice(0, 3) || [];
-  const allNotes = notes || [];
+  const allNotes = notes?.filter(n => !n.isPinned) || [];
+
+  // 最近访问：基于 recentItems（已按时间倒序），根据 id 取笔记详情，最多5条
+  const recentNotes = useMemo(() => {
+    if (!notes || !recentItems.length) return [];
+    const map = new Map(notes.map(n => [n.id, n]));
+    return recentItems
+      .map(item => map.get(item.id))
+      .filter((n): n is NonNullable<typeof n> => !!n)
+      .slice(0, 5);
+  }, [notes, recentItems]);
 
   // 统计卡片数据 — 按 settings.homeStatOrder 排序
   const statsMap: Record<string, { label: string; value: number; icon: typeof FileText; color: string; action: () => void }> = {
@@ -78,7 +79,6 @@ export function Home() {
         const first = connectedClouds[0];
         const folderId = `folder-cloud-${first.provider}`;
         setSelectedFolderId(folderId);
-        addRecentItem(folderId, CLOUD_NAMES[first.provider] || first.displayName, 'cloud');
         navigateTo('notes');
       } else {
         navigateTo('cloud');
@@ -99,6 +99,11 @@ export function Home() {
   const handleNoteClick = (noteId: string) => {
     if (notes) {
       setNotesCache(notes.map(n => n.id));
+      const note = notes.find(n => n.id === noteId);
+      if (note) {
+        const title = note.title || note.content.slice(0, 20) || '无标题';
+        addRecentItem(noteId, title, 'note');
+      }
     }
     setSelectedNoteId(noteId);
     navigateTo('editor');
@@ -110,7 +115,7 @@ export function Home() {
   const renderNotes = (list: typeof allNotes) => {
     if (settings.homeViewMode === 'list') {
       return (
-        <div className="glass rounded-2xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
+        <div className="glass-card rounded-[28px] overflow-hidden">
           {list.map((note) => (
             <NoteListItem
               key={note.id}
@@ -188,15 +193,71 @@ export function Home() {
   return (
     <>
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
-        {/* Hero + 视图收纳图标 — 可在设置中关闭 */}
-        {settings.showHomeTitle && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 flex items-start justify-between gap-4"
+        {/* 手机端固定右上角按钮 — 与汉堡菜单对齐 */}
+        <div className="fixed top-3 right-3 z-30 flex items-center gap-2 md:hidden">
+          <button
+            onClick={() => setShowFolderCreator(true)}
+            className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+            title="新建文件夹"
           >
-            <div>
+            <FolderPlus size={18} />
+          </button>
+          <button
+            onClick={() => setShowViewPicker(!showViewPicker)}
+            className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+            title="切换视图"
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <AnimatePresence>
+            {showViewPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowViewPicker(false)} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute top-11 right-0 glass-strong rounded-2xl p-1.5 min-w-[140px] z-50 space-y-0.5"
+                >
+                  {homeViewModes.map(({ mode, icon: Icon, label }) => {
+                    const active = settings.homeViewMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => { setHomeViewMode(mode); setShowViewPicker(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all ${
+                          active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                        style={active ? { background: 'rgba(45, 212, 191, 0.12)' } : {}}
+                      >
+                        <Icon size={16} />
+                        <span className="flex-1 text-left">{label}</span>
+                        {active && <Check size={14} />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Hero — 标题可收起 */}
+        <div className="mb-6 sm:mb-8 relative">
+          {/* 标题区域 — 点击收起，左侧留出汉堡菜单空间 */}
+          {settings.showHomeTitle && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{
+                opacity: homeTitleCollapsed ? 0 : 1,
+                y: homeTitleCollapsed ? -30 : 0,
+                height: homeTitleCollapsed ? 0 : 'auto',
+              }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="overflow-hidden cursor-pointer mt-12 md:mt-0"
+              onClick={() => setHomeTitleCollapsed(true)}
+            >
               <h1 className="typo-hero mb-2">
                 <span className="gradient-text">让你的记忆</span>
                 <br />
@@ -205,59 +266,59 @@ export function Home() {
               <p className="typo-body-lg mt-2 sm:mt-3">
                 MemoFlow · 跨平台备忘录
               </p>
-            </div>
+            </motion.div>
+          )}
 
-            {/* 视图切换 + 新建文件夹 */}
-            <div className="relative shrink-0 flex items-center gap-2">
-              <button
-                onClick={() => setShowFolderCreator(true)}
-                className="glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
-                title="新建文件夹"
-              >
-                <FolderPlus size={18} />
-              </button>
-              <button
-                onClick={() => setShowViewPicker(!showViewPicker)}
-                className="glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
-                title="切换视图"
-              >
-                <LayoutGrid size={18} />
-              </button>
-              <AnimatePresence>
-                {showViewPicker && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowViewPicker(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.92, y: -8 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.92, y: -8 }}
-                      transition={{ duration: 0.18 }}
-                      className="absolute top-12 right-0 glass-strong rounded-2xl p-1.5 min-w-[140px] z-50 space-y-0.5"
-                    >
-                      {homeViewModes.map(({ mode, icon: Icon, label }) => {
-                        const active = settings.homeViewMode === mode;
-                        return (
-                          <button
-                            key={mode}
-                            onClick={() => { setHomeViewMode(mode); setShowViewPicker(false); }}
-                            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all ${
-                              active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                            }`}
-                            style={active ? { background: 'rgba(45, 212, 191, 0.12)' } : {}}
-                          >
-                            <Icon size={16} />
-                            <span className="flex-1 text-left">{label}</span>
-                            {active && <Check size={14} />}
-                          </button>
-                        );
-                      })}
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        )}
+          {/* 桌面端视图切换 + 新建文件夹 */}
+          <div className="hidden md:flex relative shrink-0 items-center gap-2 absolute top-0 right-0">
+            <button
+              onClick={() => setShowFolderCreator(true)}
+              className="icon-press glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+              title="新建文件夹"
+            >
+              <FolderPlus size={18} />
+            </button>
+            <button
+              onClick={() => setShowViewPicker(!showViewPicker)}
+              className="icon-press glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+              title="切换视图"
+            >
+              <LayoutGrid size={18} />
+            </button>
+            <AnimatePresence>
+              {showViewPicker && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowViewPicker(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute top-12 right-0 glass-strong rounded-2xl p-1.5 min-w-[140px] z-50 space-y-0.5"
+                  >
+                    {homeViewModes.map(({ mode, icon: Icon, label }) => {
+                      const active = settings.homeViewMode === mode;
+                      return (
+                        <button
+                          key={mode}
+                          onClick={() => { setHomeViewMode(mode); setShowViewPicker(false); }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all ${
+                            active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                          }`}
+                          style={active ? { background: 'rgba(45, 212, 191, 0.12)' } : {}}
+                        >
+                          <Icon size={16} />
+                          <span className="flex-1 text-left">{label}</span>
+                          {active && <Check size={14} />}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
 
         {/* 新建文件夹弹窗 */}
         <AnimatePresence>
@@ -341,7 +402,7 @@ export function Home() {
             })}
           </div>
         ) : settings.homeViewMode === 'timeline' ? (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
             {stats.map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -350,17 +411,30 @@ export function Home() {
                   initial={{ opacity: 0, x: -16 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -3 }}
                   onClick={stat.action}
-                  className="glass-card p-5 text-left relative pl-6"
+                  className="text-left relative"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                    paddingLeft: '20px',
+                  }}
                 >
-                  <div className="absolute left-4 top-5 bottom-5 w-0.5 rounded-full" style={{ background: `${stat.color}40` }} />
-                  <div className="absolute left-2.5 top-5 w-3 h-3 rounded-full" style={{ background: stat.color }} />
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${stat.color}20` }}>
-                      <Icon size={16} style={{ color: stat.color }} />
+                  <div className="absolute left-3 top-3 bottom-3 w-0.5 rounded-full" style={{ background: `${stat.color}40` }} />
+                  <div className="absolute left-2 top-3.5 w-2.5 h-2.5 rounded-full" style={{ background: stat.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={14} style={{ color: stat.color }} />
                     </div>
-                    <span className="typo-label">{stat.label}</span>
+                    <span className="typo-label text-xs">{stat.label}</span>
                   </div>
                   <div className="typo-stat">{stat.value}</div>
                 </motion.button>
@@ -368,7 +442,7 @@ export function Home() {
             })}
           </div>
         ) : settings.homeViewMode === 'kanban' ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
             {stats.map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -377,24 +451,36 @@ export function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -3 }}
                   onClick={stat.action}
-                  className="glass-card p-4 text-left overflow-hidden relative"
+                  className="text-left relative overflow-hidden"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-1" style={{ background: stat.color }} />
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${stat.color}20` }}>
-                      <Icon size={16} style={{ color: stat.color }} />
+                  <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: stat.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={14} style={{ color: stat.color }} />
                     </div>
+                    <span className="typo-label text-xs">{stat.label}</span>
                   </div>
                   <div className="typo-stat">{stat.value}</div>
-                  <div className="typo-label mt-1">{stat.label}</div>
                 </motion.button>
               );
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
             {stats.map((stat, i) => {
               const Icon = stat.icon;
               return (
@@ -403,34 +489,45 @@ export function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -4 }}
+                  whileHover={{ y: -3 }}
                   onClick={stat.action}
-                  className="glass-card p-5 text-left"
+                  className="text-left"
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(24px) saturate(180%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+                    border: '0.5px solid var(--glass-border)',
+                    borderRadius: '18px',
+                    boxShadow: 'var(--shadow-sm), var(--inset-highlight)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${stat.color}20` }}>
-                      <Icon size={20} style={{ color: stat.color }} />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${stat.color}20` }}>
+                      <Icon size={16} style={{ color: stat.color }} />
                     </div>
+                    <span className="typo-label text-xs">{stat.label}</span>
                   </div>
                   <div className="typo-stat">{stat.value}</div>
-                  <div className="typo-label mt-1">{stat.label}</div>
                 </motion.button>
               );
             })}
           </div>
         )}
 
-        {/* 置顶笔记 */}
-        {pinnedNotes.length > 0 && (
+        {/* 最近访问 — 不同维度，避免与统计卡片重复 */}
+        {recentNotes.length > 0 && (
           <section className="mb-8">
             <SectionHeader
-              section="pinned"
-              icon={<Star size={18} className="text-[#fbbf24] fill-current" />}
-              color="#fbbf24"
-              title="置顶笔记"
-              onSeeAll={() => { setShowAllNotes(true); navigateTo('notes'); }}
+              section="recent"
+              icon={<Clock size={18} className="text-[var(--accent-ocean)]" />}
+              color="#38bdf8"
+              title="最近访问"
             />
-            {!isCollapsed('pinned') && renderNotes(pinnedNotes)}
+            {!isCollapsed('recent') && renderNotes(recentNotes)}
           </section>
         )}
 
@@ -473,53 +570,6 @@ export function Home() {
             </>
           )}
         </section>
-
-        {/* 已连接网盘 — 默认显示在最下方 */}
-        {connectedClouds.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader
-              section="clouds"
-              icon={<Cloud size={18} className="text-[var(--accent-violet)]" />}
-              color="#a78bfa"
-              title="已连接网盘"
-              onSeeAll={() => navigateTo('cloud')}
-            />
-            {!isCollapsed('clouds') && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {connectedClouds.map((cloud, i) => {
-                  const name = CLOUD_NAMES[cloud.provider] || cloud.displayName;
-                  return (
-                    <motion.button
-                      key={cloud.id}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.08 }}
-                      whileHover={{ y: -3 }}
-                      onClick={() => {
-                        const folderId = `folder-cloud-${cloud.provider}`;
-                        setSelectedFolderId(folderId);
-                        addRecentItem(folderId, name, 'cloud');
-                        navigateTo('notes');
-                      }}
-                      className="glass-card p-4 text-left flex items-center gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#a78bfa20' }}>
-                        <Cloud size={20} className="text-[var(--accent-violet)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="typo-label truncate">{name}</div>
-                        <div className="typo-meta mt-0.5">
-                          {cloud.lastSyncAt ? `上次同步 ${new Date(cloud.lastSyncAt).toLocaleDateString()}` : '未同步'}
-                        </div>
-                      </div>
-                      <ArrowRight size={16} className="text-[var(--text-secondary)] shrink-0" />
-                    </motion.button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
       </div>
     </>
   );

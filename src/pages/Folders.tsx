@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Folder as FolderIcon, Plus, ArrowRight, Briefcase, Home as HomeIcon, Lightbulb, type LucideIcon } from 'lucide-react';
+import { Folder as FolderIcon, Plus, ArrowRight, Briefcase, Home as HomeIcon, Lightbulb, List, Grid, Check, type LucideIcon } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 
@@ -12,15 +12,15 @@ const FOLDER_ICONS: Record<string, LucideIcon> = {
 };
 
 export function Folders() {
-  const { navigateTo, setSelectedFolderId, addRecentItem } = useStore();
+  const { navigateTo, setSelectedFolderId, settings, setFoldersViewMode } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const [showCreator, setShowCreator] = useState(false);
+  const [showViewPicker, setShowViewPicker] = useState(false);
   const [newName, setNewName] = useState('');
   const [newIcon, setNewIcon] = useState('📁');
 
   const handleFolderClick = (folderId: string, folderName: string) => {
     setSelectedFolderId(folderId);
-    addRecentItem(folderId, folderName, 'folder');
     navigateTo('notes');
   };
 
@@ -43,46 +43,131 @@ export function Folders() {
 
   const FOLDER_ICON_OPTIONS = ['📁', '💼', '🏡', '💡', '📝', '⭐', '📌', '🎯', '📚', '🎨', '🎵', '✈️', '🏠', '❤️', '🔥', '🌟'];
 
+  const folderViewModes = [
+    { mode: 'list' as const, icon: List, label: '列表' },
+    { mode: 'grid' as const, icon: Grid, label: '网格' },
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="typo-title">文件夹</h1>
-        <button
-          onClick={() => setShowCreator(true)}
-          className="glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
-          title="新建文件夹"
-        >
-          <Plus size={20} />
-        </button>
+      {/* 头部 — 与置顶笔记/全部笔记统一布局：标题左侧，视图切换+新建右侧同一行 */}
+      <div className="flex items-center justify-between mb-6 pt-14 md:pt-0">
+        <div>
+          <h1 className="typo-title">文件夹</h1>
+          <p className="typo-meta mt-1">{folders?.length || 0} 个文件夹</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* 视图切换 — 毛玻璃容器 */}
+          <div className="relative">
+            <button
+              onClick={() => setShowViewPicker(!showViewPicker)}
+              className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+              title="切换视图"
+            >
+              <Grid size={18} />
+            </button>
+            {showViewPicker && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowViewPicker(false)} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                  transition={{ duration: 0.18 }}
+                  className="absolute top-11 right-0 glass-strong rounded-2xl p-1.5 min-w-[140px] z-50 space-y-0.5"
+                >
+                  {folderViewModes.map(({ mode, icon: Icon, label }) => {
+                    const active = settings.foldersViewMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        onClick={() => { setFoldersViewMode(mode); setShowViewPicker(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all ${
+                          active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                        }`}
+                        style={active ? { background: 'rgba(45, 212, 191, 0.12)' } : {}}
+                      >
+                        <Icon size={16} />
+                        <span className="flex-1 text-left">{label}</span>
+                        {active && <Check size={14} />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              </>
+            )}
+          </div>
+          {/* 新建文件夹 — ios-glass-btn 与视图切换同质感 */}
+          <button
+            onClick={() => setShowCreator(true)}
+            className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+            title="新建文件夹"
+          >
+            <Plus size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {folders?.map((f, i) => {
-          const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
-          return (
-            <motion.button
-              key={f.id}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              whileHover={{ y: -3 }}
-              onClick={() => handleFolderClick(f.id, f.name)}
-              className="glass-card p-5 text-left flex items-center gap-4"
-            >
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
-                <Icon size={24} style={{ color: f.color }} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="typo-note-title truncate">{f.name}</div>
-                <div className="typo-meta mt-1">
-                  {f.id.startsWith('folder-cloud-') ? '云端同步' : '本地'}
+      {/* 网格视图 — 卡片式 */}
+      {settings.foldersViewMode === 'grid' && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {folders?.map((f, i) => {
+            const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+            return (
+              <motion.button
+                key={f.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+                whileHover={{ y: -3 }}
+                onClick={() => handleFolderClick(f.id, f.name)}
+                className="glass-card p-4 text-left flex flex-col gap-3"
+              >
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
+                  <Icon size={24} style={{ color: f.color }} />
                 </div>
-              </div>
-              <ArrowRight size={18} className="text-[var(--text-secondary)] shrink-0" />
-            </motion.button>
-          );
-        })}
-      </div>
+                <div className="min-w-0 flex-1">
+                  <div className="typo-note-title truncate">{f.name}</div>
+                  <div className="typo-meta mt-1">
+                    {f.id.startsWith('folder-cloud-') ? '云端同步' : '本地'}
+                  </div>
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 列表视图 — Apple Notes 圆润质感，与笔记列表统一 */}
+      {settings.foldersViewMode === 'list' && (
+        <div className="glass-card rounded-[28px] overflow-hidden">
+          {folders?.map((f, i) => {
+            const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+            return (
+              <motion.button
+                key={f.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                onClick={() => handleFolderClick(f.id, f.name)}
+                className="w-full text-left flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors"
+                style={i < (folders?.length || 0) - 1 ? { borderBottom: '1px solid var(--glass-border)' } : {}}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${f.color}20` }}>
+                  <Icon size={20} style={{ color: f.color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="typo-note-title truncate">{f.name}</div>
+                  <div className="typo-meta mt-0.5">
+                    {f.id.startsWith('folder-cloud-') ? '云端同步' : '本地'}
+                  </div>
+                </div>
+                <ArrowRight size={16} className="text-[var(--text-secondary)] shrink-0" />
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
 
       {showCreator && (
         <div className="z-50 bg-black/40 backdrop-blur-sm" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowCreator(false); setNewName(''); setNewIcon('📁'); }}>

@@ -113,7 +113,7 @@ export function CloudSync() {
                     </button>
                     <button
                       onClick={() => handleDisconnect(account)}
-                      className="w-9 h-9 rounded-xl glass flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0"
+                      className="icon-press w-9 h-9 rounded-xl glass flex items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0"
                     >
                       <Trash2 size={16} />
                     </button>

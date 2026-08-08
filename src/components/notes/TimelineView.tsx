@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Pin, Lock, Paperclip, Calendar } from 'lucide-react';
 import type { Note, Tag } from '../../types';
+import { getDisplayTitle } from '../../lib/note-utils';
 
 interface Props {
   notes: Note[];
@@ -121,7 +122,7 @@ export function TimelineView({ notes, tags, folderName, onNoteClick }: Props) {
                       {note.isLocked && <Lock size={13} className="text-[var(--accent-ocean)]" />}
                       {note.attachments.length > 0 && <Paperclip size={13} className="text-[var(--text-secondary)]" />}
                       <h4 className="text-sm font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-mint)] transition-colors">
-                        {note.title || '无标题'}
+                        {getDisplayTitle(note)}
                       </h4>
                     </div>
                     <span className="text-xs text-[var(--text-secondary)] flex-shrink-0 ml-2">

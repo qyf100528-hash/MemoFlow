@@ -13,6 +13,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import { db } from '../../lib/db';
+import { getDisplayTitle } from '../../lib/note-utils';
 import type { Note, Folder, Tag } from '../../types';
 
 interface Props {
@@ -79,7 +80,7 @@ function DraggableNote({
       </div>
 
       <h4 className="text-sm font-medium text-[var(--text-primary)] mb-1 line-clamp-1 group-hover:text-[var(--accent-mint)] transition-colors">
-        {note.title || '无标题'}
+        {getDisplayTitle(note)}
       </h4>
 
       <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2 leading-relaxed">
@@ -296,7 +297,7 @@ export function KanbanView({ notes, folders, tags, onNoteClick }: Props) {
         {activeNote ? (
           <div className="glass-strong rounded-xl p-3 w-72 opacity-90 rotate-3">
             <h4 className="text-sm font-medium text-[var(--text-primary)] mb-1 line-clamp-1">
-              {activeNote.title || '无标题'}
+              {getDisplayTitle(activeNote)}
             </h4>
             <p className="text-xs text-[var(--text-secondary)] line-clamp-2">
               {activeNote.plainText || '...'}

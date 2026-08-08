@@ -1,5 +1,6 @@
 import { Pin, Lock, Paperclip } from 'lucide-react';
 import type { Note, Tag } from '../../types';
+import { getDisplayTitle } from '../../lib/note-utils';
 
 interface NoteListItemProps {
   note: Note;
@@ -10,7 +11,9 @@ interface NoteListItemProps {
 
 export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemProps) {
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
-  const preview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').slice(0, 80);
+  const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
+  // 空内容时显示文件夹名或占位文字，保证列表项不为空
+  const preview = rawPreview || (folderName ? `${folderName}` : '无内容');
 
   return (
     <button
@@ -28,7 +31,7 @@ export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemPr
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="typo-note-title truncate">
-            {note.title || '无标题'}
+            {getDisplayTitle(note)}
           </span>
           {noteTags.length > 0 && (
             <span
@@ -38,7 +41,7 @@ export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemPr
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="typo-meta truncate">{preview}</span>
+          <span className="typo-meta truncate flex-1 min-w-0">{preview}</span>
           <span className="typo-meta shrink-0">
             {formatTime(note.updatedAt)}
           </span>

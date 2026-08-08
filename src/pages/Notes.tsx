@@ -15,7 +15,7 @@ export function Notes() {
     selectedFolderId, selectedTagId,
     showFavorites, showAllNotes,
     searchQuery, setSearchQuery, setSelectedNoteId, navigateTo,
-    notesCache, setNotesCache,
+    notesCache, setNotesCache, addRecentItem,
   } = useStore();
 
   const folders = useLiveQuery(() => db.folders.toArray(), []);
@@ -31,7 +31,7 @@ export function Notes() {
       result = result.filter(n => n.isPinned);
     }
     if (showAllNotes) {
-      // 全部笔记，不过滤
+      result = result.filter(n => !n.isPinned);
     }
     if (selectedFolderId) {
       result = result.filter(n => n.folderId === selectedFolderId);
@@ -95,6 +95,11 @@ export function Notes() {
     // 保存当前列表顺序快照到缓存
     if (notes) {
       setNotesCache(notes.map(n => n.id));
+      const note = notes.find(n => n.id === noteId);
+      if (note) {
+        const title = note.title || note.content.slice(0, 20) || '无标题';
+        addRecentItem(noteId, title, 'note');
+      }
     }
     setSelectedNoteId(noteId);
     navigateTo('editor');
@@ -109,8 +114,8 @@ export function Notes() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
-      {/* 头部 */}
-      <div className="flex items-center justify-between mb-6">
+      {/* 头部 — 标题下移避开返回按钮，与右侧按钮同一行对齐 */}
+      <div className="flex items-center justify-between mb-6 pt-14 md:pt-0">
         <div>
           <h1 className="typo-title">{getTitle()}</h1>
           <p className="typo-meta mt-1">{notes?.length || 0} 条笔记</p>
@@ -155,7 +160,7 @@ export function Notes() {
         <>
           {/* 列表视图 — Apple Notes 紧凑列表风格 */}
           {settings.viewMode === 'list' && (
-            <div className="glass rounded-2xl overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
+            <div className="glass-card rounded-[28px] overflow-hidden">
               {notes.map((note, i) => (
                 <NoteListItem
                   key={note.id}

@@ -54,6 +54,7 @@ interface AppState {
   setResolvedTheme: (theme: ResolvedTheme) => void;
   setViewMode: (mode: ViewMode) => void;
   setHomeViewMode: (mode: ViewMode) => void;
+  setFoldersViewMode: (mode: 'list' | 'grid') => void;
   updateSettings: (s: Partial<AppSettings>) => void;
   setNotesCache: (ids: string[]) => void;
   clearNotesCache: () => void;
@@ -61,12 +62,15 @@ interface AppState {
   moveHomeStat: (id: string, direction: 'up' | 'down') => void;
   recentItems: { id: string; name: string; icon: string; openedAt: number }[];
   addRecentItem: (id: string, name: string, icon: string) => void;
+  homeTitleCollapsed: boolean;
+  setHomeTitleCollapsed: (v: boolean) => void;
 }
 
 const defaultSettings: AppSettings = {
   theme: 'custom',
   viewMode: 'list',
   homeViewMode: 'list',
+  foldersViewMode: 'grid',
   defaultFolderId: null,
   fontSize: 'medium',
   autoSave: true,
@@ -98,6 +102,7 @@ export const useStore = create<AppState>()(
       resolvedTheme: getSystemTheme(),
       notesCache: null,
       recentItems: [],
+      homeTitleCollapsed: false,
 
       setCurrentPage: (page) => set({ currentPage: page }),
 
@@ -154,6 +159,7 @@ export const useStore = create<AppState>()(
       setResolvedTheme: (theme) => set({ resolvedTheme: theme }),
       setViewMode: (mode) => set((s) => ({ settings: { ...s.settings, viewMode: mode } })),
       setHomeViewMode: (mode) => set((s) => ({ settings: { ...s.settings, homeViewMode: mode } })),
+      setFoldersViewMode: (mode) => set((s) => ({ settings: { ...s.settings, foldersViewMode: mode } })),
       updateSettings: (ns) => set((s) => ({ settings: { ...s.settings, ...ns } })),
       setNotesCache: (ids) => set({ notesCache: ids }),
       clearNotesCache: () => set({ notesCache: null }),
@@ -161,6 +167,7 @@ export const useStore = create<AppState>()(
         const filtered = s.recentItems.filter(f => f.id !== id);
         return { recentItems: [{ id, name, icon, openedAt: Date.now() }, ...filtered].slice(0, 5) };
       }),
+      setHomeTitleCollapsed: (v) => set({ homeTitleCollapsed: v }),
       toggleSectionCollapse: (section) => set((s) => {
         const collapsed = s.settings.collapsedSections || [];
         const isCollapsed = collapsed.includes(section);
@@ -185,11 +192,12 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'memoflow-store',
-      version: 11,
-      // 仅持久化设置和主题，不持久化运行时导航状态
+      version: 12,
+      // 仅持久化设置、主题和最近访问记录，不持久化运行时导航状态
       partialize: (s) => ({
         settings: s.settings,
         resolvedTheme: s.resolvedTheme,
+        recentItems: s.recentItems,
       }),
       migrate: (persistedState: unknown, version: number) => {
         const s = persistedState as Partial<AppState>;
@@ -209,10 +217,11 @@ export const useStore = create<AppState>()(
           delete old.customAccent;
           delete old.customBg;
         }
-        // v10: 仅返回需要持久化的字段，运行时状态由初始值提供
+        // v12: 持久化 recentItems，确保刷新后保留最近访问记录
         return {
           settings: s.settings,
           resolvedTheme: s.resolvedTheme,
+          recentItems: Array.isArray(s.recentItems) ? s.recentItems : [],
         } as Partial<AppState>;
       },
     }

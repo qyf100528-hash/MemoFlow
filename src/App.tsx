@@ -56,7 +56,30 @@ const PURE_LIGHT = { primary: '#f2f2f7', secondary: '#ffffff', tertiary: '#e5e5e
 export default function App() {
   const { currentPage, settings, resolvedTheme, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack, setResolvedTheme } = useStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [logoVisible, setLogoVisible] = useState(false);
 
+  // 滚动控制 Logo 显示/隐藏：向下滚动显示，向上滚动隐藏
+  useEffect(() => {
+    if (currentPage !== 'home') { setLogoVisible(false); return; }
+    let lastY = 0;
+    const main = document.querySelector('main');
+    const scrollEl = main?.querySelector('[class*="overflow-y-auto"]') as HTMLElement | null;
+    if (!scrollEl) return;
+    const onScroll = () => {
+      const y = scrollEl.scrollTop;
+      const delta = y - lastY;
+      if (y < 10) {
+        setLogoVisible(false);
+      } else if (delta > 5) {
+        setLogoVisible(true);
+      } else if (delta < -5) {
+        setLogoVisible(false);
+      }
+      lastY = y;
+    };
+    scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    return () => scrollEl.removeEventListener('scroll', onScroll);
+  }, [currentPage]);
 
   // 当页面变化时关闭侧边栏抽屉
   useEffect(() => {
@@ -208,23 +231,52 @@ export default function App() {
 
         {/* 主内容区 */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          {/* 手机端顶部栏 */}
-          {currentPage !== 'editor' && (
-          <div className="flex items-center gap-2 px-3 h-14 shrink-0 ios-glass md:hidden" style={{ borderBottom: '0.5px solid rgba(255, 255, 255, 0.12)' }}>
-            {currentPage === 'home' ? (
-              <button onClick={() => setSidebarOpen(true)} className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)]">
-                <Menu size={20} />
-              </button>
-            ) : (
-              <button onClick={() => goBack()} className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)]">
-                <ChevronLeft size={22} />
-              </button>
-            )}
+          {/* 手机端顶部 — 汉堡菜单 fixed + Logo 滚动毛玻璃浮层（无硬边框） */}
+        {currentPage !== 'editor' && (
+          <>
+            {/* 汉堡菜单 — 始终 fixed 在左上角，不依赖 Header 容器，不产生任何分割线 */}
+            <div className="fixed left-3 top-3 z-40 md:hidden">
+              {currentPage === 'home' ? (
+                <button onClick={() => setSidebarOpen(true)} className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)]">
+                  <Menu size={20} />
+                </button>
+              ) : (
+                <button onClick={() => goBack()} className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)]">
+                  <ChevronLeft size={22} />
+                </button>
+              )}
+            </div>
+            {/* Logo — 下拉时从顶部滑入，iOS 风格 translucent material，无 border-bottom */}
             {currentPage === 'home' && (
-              <span className="text-base font-semibold gradient-text flex-1">MemoFlow</span>
+              <AnimatePresence>
+                {logoVisible && (
+                  <motion.div
+                    initial={{ y: -56, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -56, opacity: 0 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    className="fixed top-0 left-0 right-0 z-30 md:hidden flex items-center gap-2 px-3 h-12"
+                    style={{
+                      background: resolvedTheme === 'light'
+                        ? 'rgba(255, 255, 255, 0.72)'
+                        : 'rgba(20, 20, 22, 0.68)',
+                      backdropFilter: 'blur(32px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(32px) saturate(180%)',
+                    }}
+                  >
+                    <div className="w-9 shrink-0" />
+                    <span
+                      className="text-base font-semibold gradient-text cursor-pointer select-none"
+                      onClick={() => useStore.getState().setHomeTitleCollapsed(false)}
+                    >
+                      MemoFlow
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             )}
-          </div>
-          )}
+          </>
+        )}
 
           {/* 桌面端顶部栏 */}
           <div className="hidden md:block">

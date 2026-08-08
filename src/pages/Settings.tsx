@@ -82,67 +82,65 @@ export function Settings() {
               </div>
             </div>
 
-            {/* 色板 — 仅 custom 模式显示 */}
-            {settings.theme === 'custom' && (
-              <>
-                {/* 重点色 — 5 种预设 */}
+            {/* 重点色 - 所有主题模式均可选 */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <label className="typo-label flex items-center gap-2">
-                        <Palette size={14} /> 重点色
-                      </label>
-                      <p className="typo-meta mt-0.5">选择应用的主色调</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-5 gap-2 sm:gap-3">
-                    {ACCENT_COLORS.map((c) => {
-                      const active = settings.accentColor === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          onClick={() => updateSettings({ accentColor: c.id })}
-                          className="relative rounded-xl p-2 sm:p-3 transition-all group"
-                          style={{
-                            background: active ? `${c.primary}20` : 'transparent',
-                            border: `1px solid ${active ? c.primary : 'var(--glass-border)'}`,
-                          }}
-                        >
-                          <div
-                            className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden"
-                            style={{ background: `linear-gradient(135deg, ${c.primary}, ${c.secondary})` }}
-                          >
-                            {active && (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <motion.div
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center"
-                                >
-                                  <Check size={14} className="text-white" strokeWidth={3} />
-                                </motion.div>
-                              </div>
-                            )}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-center" style={{ color: active ? c.primary : 'var(--text-secondary)' }}>
-                            {c.label}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <label className="typo-label flex items-center gap-2">
+                    <Palette size={14} /> 重点色
+                  </label>
+                  <p className="typo-meta mt-0.5">选择应用的主色调</p>
                 </div>
+              </div>
+              <div className="grid grid-cols-5 gap-2 sm:gap-3">
+                {ACCENT_COLORS.map((c) => {
+                  const active = settings.accentColor === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => updateSettings({ accentColor: c.id })}
+                      className="relative rounded-xl p-2 sm:p-3 transition-all group"
+                      style={{
+                        background: active ? `${c.primary}20` : 'transparent',
+                        border: `1px solid ${active ? c.primary : 'var(--glass-border)'}`,
+                      }}
+                    >
+                      <div
+                        className="w-full aspect-square rounded-lg mb-1.5 sm:mb-2 relative overflow-hidden"
+                        style={{ background: `linear-gradient(135deg, ${c.primary}, ${c.secondary})` }}
+                      >
+                        {active && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center"
+                            >
+                              <Check size={14} className="text-white" strokeWidth={3} />
+                            </motion.div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-center" style={{ color: active ? c.primary : 'var(--text-secondary)' }}>
+                        {c.label}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                {/* 背景色 — 5 种预设，可自由搭配 */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <label className="typo-label flex items-center gap-2">
-                        <Palette size={14} /> 背景色
-                      </label>
-                      <p className="typo-meta mt-0.5">可与重点色自由搭配</p>
+            {/* 背景色 - 仅 custom 模式显示 */}
+            {settings.theme === 'custom' && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="typo-label flex items-center gap-2">
+                      <Palette size={14} /> 背景色
+                    </label>
+                    <p className="typo-meta mt-0.5">可与重点色自由搭配</p>
                     </div>
-                  </div>
+                </div>
                   <div className="grid grid-cols-5 gap-2 sm:gap-3">
                     {BG_COLORS.map((bg) => {
                       const active = settings.backgroundColor === bg.id;
@@ -179,11 +177,10 @@ export function Settings() {
                       );
                     })}
                   </div>
-                </div>
-              </>
+              </div>
             )}
 
-            {/* 视图模式 — iOS 分段控制器风格，所有按钮同行等高 */}
+            {/* 视图模式 - iOS 分段控制器风格，所有按钮同行等高 */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <label className="typo-label">默认视图</label>
@@ -217,7 +214,7 @@ export function Settings() {
                 <label className="typo-label flex items-center gap-2">
                   <Type size={14} /> 字体大小
                 </label>
-                <p className="typo-meta mt-0.5">影响笔记正文显示大小</p>
+                <p className="typo-meta mt-0.5">影响应用正文字体大小</p>
               </div>
               <div className="ios-segment flex p-1 gap-0.5 shrink-0">
                 {([

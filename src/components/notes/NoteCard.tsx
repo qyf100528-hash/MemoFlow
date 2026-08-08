@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import { Pin, Lock, Paperclip } from 'lucide-react';
 import type { Note, Tag } from '../../types';
+import { getDisplayTitle } from '../../lib/note-utils';
 
 interface NoteCardProps {
   note: Note;
@@ -11,19 +12,11 @@ interface NoteCardProps {
   index?: number;
 }
 
-// 提取标题：有标题用标题，无标题则取正文第一句
-function getDisplayTitle(note: Note): string {
-  if (note.title && note.title.trim()) return note.title.trim();
-  const text = (note.plainText || note.content.replace(/[#*`>\-|]/g, '')).trim();
-  if (!text) return '';
-  // 第一句：按中文句号/问号/叹号或英文句点分割
-  const firstSentence = text.split(/[。！？\n.!?]/)[0].trim();
-  return firstSentence || text.slice(0, 40);
-}
-
 export function NoteCard({ note, tags, folderName, onClick, index = 0 }: NoteCardProps) {
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
-  const preview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').slice(0, 160);
+  const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
+  // 空内容时显示文件夹名或占位文字
+  const preview = rawPreview || (folderName ? folderName : '无内容');
   const title = getDisplayTitle(note);
 
   // 动态对齐：短标题居中，长标题（接近溢出）左对齐

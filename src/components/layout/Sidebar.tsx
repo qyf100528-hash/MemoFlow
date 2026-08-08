@@ -22,6 +22,8 @@ const RECENT_ICONS: Record<string, LucideIcon> = {
   'pinned': Star,
   'cloud': Cloud,
   'folder': FolderIcon,
+  'note': FileText,
+  'tag': TagIcon,
 };
 
 export function Sidebar() {
@@ -47,8 +49,8 @@ export function Sidebar() {
 
   const navItems = [
     { id: 'home', label: '首页', icon: Home, action: goHome },
-    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); addRecentItem('allNotes', '全部笔记', 'allNotes'); navigateTo('notes'); } },
-    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); addRecentItem('pinned', '置顶笔记', 'pinned'); navigateTo('notes'); } },
+    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); navigateTo('notes'); } },
+    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); navigateTo('notes'); } },
   ];
 
   const cloudItems = [
@@ -59,7 +61,6 @@ export function Sidebar() {
 
   const handleFolderClick = (folderId: string, folderName: string) => {
     setSelectedFolderId(folderId);
-    addRecentItem(folderId, folderName, 'folder');
     navigateTo('notes');
   };
 
@@ -142,7 +143,7 @@ export function Sidebar() {
     return (
       <div key={t.id} className="group flex items-center gap-1">
         <button
-          onClick={() => { setSelectedTagId(t.id); addRecentItem(t.id, t.name, 'tag'); navigateTo('notes'); }}
+          onClick={() => { setSelectedTagId(t.id); navigateTo('notes'); }}
           className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
             active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
@@ -164,7 +165,10 @@ export function Sidebar() {
   };
 
   const handleRecentClick = (item: typeof recentItems[number]) => {
-    if (item.id === 'allNotes') { setShowAllNotes(true); navigateTo('notes'); }
+    if (item.icon === 'note') {
+      useStore.getState().setSelectedNoteId(item.id);
+      navigateTo('editor');
+    } else if (item.id === 'allNotes') { setShowAllNotes(true); navigateTo('notes'); }
     else if (item.id === 'pinned') { setShowFavorites(true); navigateTo('notes'); }
     else if (item.id === 'home') { goHome(); }
     else if (item.id.startsWith('folder-cloud-')) { setSelectedFolderId(item.id); navigateTo('notes'); }
@@ -174,8 +178,11 @@ export function Sidebar() {
 
   return (
     <aside className="ios-glass flex flex-col h-full safe-top" style={{ width: 240, borderRight: '0.5px solid rgba(255, 255, 255, 0.12)' }}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
+      {/* Logo — 点击展开首页标题 */}
+      <div
+        className="flex items-center gap-3 px-5 py-5 cursor-pointer select-none"
+        onClick={() => { goHome(); useStore.getState().setHomeTitleCollapsed(false); }}
+      >
         <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent-gradient)' }}>
           <svg viewBox="0 0 64 64" className="w-5 h-5" fill="none">
             <path d="M20 22h24M20 32h24M20 42h16" stroke="white" strokeWidth="4" strokeLinecap="round"/>
