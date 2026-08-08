@@ -51,8 +51,9 @@ export function TemplatePicker({ onSelect, onClose }: Props) {
 
   const handleSelect = (tpl: NoteTemplate) => {
     const filled = fillTemplateVariables(tpl.content);
-    const titleMatch = filled.match(/^#\s+(.+)$/m);
-    const title = titleMatch ? titleMatch[1].trim() : '';
+    // 取内容第一行作为标题
+    const firstLine = filled.split('\n').find(l => l.trim()) || '';
+    const title = firstLine.trim();
     onSelect(filled, title);
   };
 
