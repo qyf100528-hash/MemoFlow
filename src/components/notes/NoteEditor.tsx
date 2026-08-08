@@ -9,6 +9,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Note, NoteVersion, Attachment } from '../../types';
 import { initMasterKey, encryptContent, decryptContent, getSessionKey, hasLockPassword, unlockWithPassword } from '../../lib/crypto';
 import { saveVersionSnapshot } from '../../lib/version-history';
+import { getFolderIcon } from '../../lib/folderIcons';
 import { VersionHistory } from './VersionHistory';
 import { AIPanel } from './AIPanel';
 import { BacklinksPanel } from './BacklinksPanel';
@@ -17,7 +18,7 @@ import { getLinkSuggestions } from '../../lib/links/link-parser';
 import type { Note as NoteType } from '../../types';
 
 export function NoteEditor() {
-  const { selectedNoteId, setSelectedNoteId, goBack, resolvedTheme, addRecentItem } = useStore();
+  const { selectedNoteId, setSelectedNoteId, goBack, resolvedTheme, addRecentItem, selectedFolderId, showFavorites, showAllNotes } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
   const cloudAccounts = useLiveQuery(() => db.cloudAccounts.filter(a => a.isConnected).toArray(), []);
@@ -105,15 +106,18 @@ export function NoteEditor() {
       });
     } else {
       // 新建笔记自动进入编辑模式
+      // 智能保存位置：从文件夹进入 → 保存到该文件夹；从置顶笔记进入 → 自动置顶
       const now = Date.now();
+      const inheritFolderId = selectedFolderId || null;
+      const inheritIsPinned = showFavorites || false;
       const newNote: Note = {
         id: `note-${now}`,
         title: '',
         content: '',
         plainText: '',
-        folderId: null,
+        folderId: inheritFolderId,
         tagIds: [],
-        isPinned: false,
+        isPinned: inheritIsPinned,
         isLocked: false,
         isArchived: false,
         isEncrypted: false,
@@ -128,7 +132,7 @@ export function NoteEditor() {
       setIsEditing(true);
       setHasInteracted(true);
     }
-  }, [selectedNoteId]);
+  }, [selectedNoteId, selectedFolderId, showFavorites, showAllNotes]);
 
   // 手动保存
   const handleSave = async () => {
@@ -248,7 +252,8 @@ export function NoteEditor() {
 
   const handleDelete = async () => {
     if (!note) return;
-    await db.notes.delete(note.id);
+    // 移入回收站（软删除），可在回收站页面恢复或永久删除
+    await db.notes.update(note.id, { isArchived: true });
     goBack();
     setSelectedNoteId(null);
   };
@@ -336,7 +341,7 @@ export function NoteEditor() {
 
   // 返回时如果有未保存的编辑，自动保存
   const handleBack = () => {
-    if (isEditing && note && originalNoteRef.current) {
+    if (note && originalNoteRef.current) {
       const orig = originalNoteRef.current;
       // 比较所有可能修改的字段：标题、内容、标签、文件夹、置顶、锁定
       const hasChanges = note.title !== orig.title
@@ -395,16 +400,19 @@ export function NoteEditor() {
             <div className="relative hidden sm:block">
               <button onClick={() => setShowFolderPicker(!showFolderPicker)} className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
                 <FolderIcon size={15} />
-                {currentFolder ? `${currentFolder.icon} ${currentFolder.name}` : '文件夹'}
+                {currentFolder ? currentFolder.name : '文件夹'}
               </button>
               {showFolderPicker && (
                 <div className="absolute top-11 left-0 glass-strong rounded-xl p-2 min-w-[160px] z-50">
                   <button onClick={() => { handleChange('folderId', null); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-secondary)]">无</button>
-                  {folders?.map(f => (
+                  {folders?.map(f => {
+                    const FIcon = getFolderIcon(f.icon);
+                    return (
                     <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowFolderPicker(false); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-white/5 flex items-center gap-2 text-[var(--text-primary)]">
-                      <span>{f.icon}</span> {f.name}
+                      <FIcon size={15} /> {f.name}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -448,7 +456,7 @@ export function NoteEditor() {
             <button onClick={() => { setShowBacklinks(!showBacklinks); setShowAIPanel(false); setShowHistory(false); }} className={`icon-press hidden sm:flex glass px-3 h-9 rounded-xl items-center gap-2 text-sm transition-colors shrink-0 ${showBacklinks ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`} title="反向链接">
               <Link2 size={15} /> 链接
             </button>
-            <button onClick={handleDelete} className="icon-press hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0">
+            <button onClick={handleDelete} title="移到回收站" className="icon-press hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-[var(--text-secondary)] hover:text-red-400 transition-colors shrink-0">
               <Trash2 size={18} />
             </button>
           </>
@@ -463,9 +471,11 @@ export function NoteEditor() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
               <div className="absolute top-11 right-0 glass-strong rounded-xl p-2 min-w-[180px] z-50 space-y-0.5 max-h-[calc(100vh-100px)] overflow-y-auto overscroll-contain">
+                {/* 分享 */}
                 <button onClick={() => { handleShare(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <Share2 size={16} /> 分享
                 </button>
+                {/* 快速状态：置顶 / 锁定 */}
                 <button onClick={() => { handleChange('isPinned', !note.isPinned); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <Pin size={16} className={note.isPinned ? 'text-[var(--accent-mint)] fill-current' : ''} /> {note.isPinned ? '取消置顶' : '置顶'}
                 </button>
@@ -473,13 +483,16 @@ export function NoteEditor() {
                   {note.isLocked ? <Lock size={16} className="text-[var(--accent-ocean)]" /> : <Unlock size={16} />} {note.isLocked ? '解锁' : '锁定'}
                 </button>
 
+                {/* 整理 */}
                 <div className="h-px bg-[var(--glass-border)] my-1" />
                 <button onClick={() => { setShowSaveLocation(true); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
-                  <FolderInput size={16} /> 移动到文件夹 {currentFolder ? `· ${currentFolder.name}` : '· 本地'}
+                  <FolderInput size={16} /> 移动 <span className="typo-meta ml-auto">{currentFolder ? currentFolder.name : '本地'}</span>
                 </button>
                 <button onClick={() => { setShowTagPicker(true); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
-                  <TagIcon size={16} /> {noteTags.length > 0 ? `${noteTags.length} 个标签` : '添加标签'}
+                  <TagIcon size={16} /> 标签 {noteTags.length > 0 && <span className="typo-meta ml-auto">{noteTags.length}</span>}
                 </button>
+
+                {/* 工具 */}
                 <div className="h-px bg-[var(--glass-border)] my-1" />
                 <button onClick={() => { setShowAIPanel(!showAIPanel); setShowHistory(false); setShowBacklinks(false); setShowMoreMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 ${showAIPanel ? 'text-[var(--accent-violet)]' : 'text-[var(--text-primary)]'}`}>
                   <Sparkles size={16} /> AI 助手
@@ -490,13 +503,14 @@ export function NoteEditor() {
                 <button onClick={() => { setShowBacklinks(!showBacklinks); setShowAIPanel(false); setShowHistory(false); setShowMoreMenu(false); }} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 ${showBacklinks ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-primary)]'}`}>
                   <Link2 size={16} /> 反向链接
                 </button>
-                <div className="h-px bg-[var(--glass-border)] my-1" />
                 <button onClick={() => { setShowTemplatePicker(true); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <FileText size={16} /> 选择模板
                 </button>
+
+                {/* 危险操作 */}
                 <div className="h-px bg-[var(--glass-border)] my-1" />
                 <button onClick={() => { handleDelete(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-red-400">
-                  <Trash2 size={16} /> 删除笔记
+                  <Trash2 size={16} /> 移到回收站
                 </button>
               </div>
             </>
@@ -561,11 +575,14 @@ export function NoteEditor() {
               {(folders?.filter(f => !f.id.startsWith('folder-cloud-')) || []).length > 0 && (
                 <p className="typo-meta px-4 pt-2 pb-1">本地文件夹</p>
               )}
-              {folders?.filter(f => !f.id.startsWith('folder-cloud-')).map(f => (
+              {folders?.filter(f => !f.id.startsWith('folder-cloud-')).map(f => {
+                const FIcon = getFolderIcon(f.icon);
+                return (
                 <button key={f.id} onClick={() => { handleChange('folderId', f.id); setShowSaveLocation(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${note.folderId === f.id ? 'text-[var(--accent-mint)] bg-[var(--accent-mint)]/10' : 'text-[var(--text-primary)] hover:bg-white/5'}`}>
-                  <span className="text-lg">{f.icon}</span> {f.name} {note.folderId === f.id && <Check size={16} className="ml-auto" />}
+                  <FIcon size={18} /> {f.name} {note.folderId === f.id && <Check size={16} className="ml-auto" />}
                 </button>
-              ))}
+                );
+              })}
               {(folders?.filter(f => f.id.startsWith('folder-cloud-')) || []).length > 0 && (
                 <p className="typo-meta px-4 pt-2 pb-1">网盘文件夹</p>
               )}
@@ -757,6 +774,22 @@ export function NoteEditor() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* 已添加标签展示 — 编辑器和阅读模式都显示 */}
+          {noteTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
+              {noteTags.map(t => (
+                <span
+                  key={t.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+                  style={{ background: `${t.color}20`, color: t.color }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: t.color }} />
+                  {t.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

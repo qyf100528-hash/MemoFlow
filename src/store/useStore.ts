@@ -84,6 +84,7 @@ const defaultSettings: AppSettings = {
   showHomeTitle: true,
   homeStatOrder: ['allNotes', 'pinned', 'folders', 'clouds'],
   collapsedSections: [],
+  statIconColor: 'default',
 };
 
 export const useStore = create<AppState>()(
@@ -213,6 +214,7 @@ export const useStore = create<AppState>()(
           if (s.settings.showHomeTitle === undefined) s.settings.showHomeTitle = true;
           if (!Array.isArray(s.settings.homeStatOrder) || s.settings.homeStatOrder.length === 0) s.settings.homeStatOrder = ['allNotes', 'pinned', 'folders', 'clouds'];
           if (!Array.isArray(s.settings.collapsedSections)) s.settings.collapsedSections = [];
+          if (s.settings.statIconColor !== 'accent' && s.settings.statIconColor !== 'default') s.settings.statIconColor = 'default';
           const old = s.settings as unknown as Record<string, unknown>;
           delete old.customAccent;
           delete old.customBg;

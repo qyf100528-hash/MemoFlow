@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, Search, Plus, ChevronLeft } from 'lucide-react';
 import { useRef } from 'react';
 import { useStore } from './store/useStore';
-import { seedDatabase, cleanupDefaultTags, seedTemplates } from './lib/db';
+import { seedDatabase, cleanupDefaultTags, seedTemplates, cleanupTemplateEmojis } from './lib/db';
 import { tokenRefreshService } from './lib/cloud/token-refresh-service';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
@@ -14,6 +14,7 @@ import { CloudSync } from './pages/CloudSync';
 import { Migration } from './pages/Migration';
 import { Settings } from './pages/Settings';
 import { Folders } from './pages/Folders';
+import { Trash } from './pages/Trash';
 import type { AccentColor } from './types';
 
 const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; gradient: string }> = {
@@ -103,6 +104,7 @@ export default function App() {
   useEffect(() => {
     seedDatabase();
     cleanupDefaultTags();
+    cleanupTemplateEmojis();
     seedTemplates();
     tokenRefreshService.start();
     return () => tokenRefreshService.stop();
@@ -192,6 +194,7 @@ export default function App() {
       case 'migration': return <Migration />;
       case 'settings': return <Settings />;
       case 'folders': return <Folders />;
+      case 'trash': return <Trash />;
       default: return <Home />;
     }
   };

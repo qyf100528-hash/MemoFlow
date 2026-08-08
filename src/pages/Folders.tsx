@@ -1,23 +1,28 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Folder as FolderIcon, Plus, ArrowRight, Briefcase, Home as HomeIcon, Lightbulb, List, Grid, Check, type LucideIcon } from 'lucide-react';
+import { Folder as FolderIcon, Plus, ArrowRight, List, Grid, Check, Smartphone, Cloud } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
-
-const FOLDER_ICONS: Record<string, LucideIcon> = {
-  '💼': Briefcase,
-  '🏡': HomeIcon,
-  '💡': Lightbulb,
-};
+import { FOLDER_ICON_OPTIONS, DEFAULT_FOLDER_ICON, getFolderIcon } from '../lib/folderIcons';
 
 export function Folders() {
   const { navigateTo, setSelectedFolderId, settings, setFoldersViewMode } = useStore();
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
+  const cloudAccounts = useLiveQuery(() => db.cloudAccounts.toArray(), []);
+  const connectedClouds = cloudAccounts?.filter(a => a.isConnected).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)) || [];
   const [showCreator, setShowCreator] = useState(false);
   const [showViewPicker, setShowViewPicker] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newIcon, setNewIcon] = useState('📁');
+  const [newIcon, setNewIcon] = useState(DEFAULT_FOLDER_ICON);
+  const [newFolderLocation, setNewFolderLocation] = useState<'local' | string>('local');
+
+  const CLOUD_LABELS: Record<string, string> = {
+    baidu: '百度网盘',
+    google: 'Google Drive',
+    quark: '夸克网盘',
+    onedrive: 'OneDrive',
+  };
 
   const handleFolderClick = (folderId: string, folderName: string) => {
     setSelectedFolderId(folderId);
@@ -27,8 +32,10 @@ export function Folders() {
   const handleCreate = async () => {
     if (!newName.trim()) return;
     const count = await db.folders.count();
+    const isCloud = newFolderLocation !== 'local';
+    const folderId = isCloud ? `folder-cloud-${newFolderLocation}-${Date.now()}` : `folder-${Date.now()}`;
     await db.folders.add({
-      id: `folder-${Date.now()}`,
+      id: folderId,
       name: newName.trim(),
       icon: newIcon,
       color: '#2dd4bf',
@@ -37,11 +44,10 @@ export function Folders() {
       createdAt: Date.now(),
     });
     setNewName('');
-    setNewIcon('📁');
+    setNewIcon(DEFAULT_FOLDER_ICON);
+    setNewFolderLocation('local');
     setShowCreator(false);
   };
-
-  const FOLDER_ICON_OPTIONS = ['📁', '💼', '🏡', '💡', '📝', '⭐', '📌', '🎯', '📚', '🎨', '🎵', '✈️', '🏠', '❤️', '🔥', '🌟'];
 
   const folderViewModes = [
     { mode: 'list' as const, icon: List, label: '列表' },
@@ -112,7 +118,7 @@ export function Folders() {
       {settings.foldersViewMode === 'grid' && (
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-3">
           {folders?.map((f, i) => {
-            const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+            const Icon = getFolderIcon(f.icon);
             return (
               <motion.div
                 key={f.id}
@@ -155,7 +161,7 @@ export function Folders() {
       {settings.foldersViewMode === 'list' && (
         <div className="space-y-2">
           {folders?.map((f, i) => {
-            const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+            const Icon = getFolderIcon(f.icon);
             return (
               <motion.button
                 key={f.id}
@@ -183,14 +189,18 @@ export function Folders() {
       )}
 
       {showCreator && (
-        <div className="z-50 bg-black/40 backdrop-blur-sm" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowCreator(false); setNewName(''); setNewIcon('📁'); }}>
+        <div className="z-50 bg-black/20" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowCreator(false); setNewName(''); setNewIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); }}>
           <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 20 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             onClick={(e) => e.stopPropagation()}
-            className="glass-strong rounded-2xl p-5 sm:p-6 w-full max-w-sm"
+            className="glass-strong rounded-[28px] p-5 sm:p-6 w-full max-w-sm"
           >
-            <h3 className="typo-section mb-4">新建文件夹</h3>
+            <h3 className="typo-title mb-5">新建文件夹</h3>
+
+            {/* 名称输入 — iOS 风格圆角输入框 */}
             <input
               type="text"
               value={newName}
@@ -198,26 +208,106 @@ export function Folders() {
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               autoFocus
               placeholder="文件夹名称"
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-[var(--glass-border)] text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:border-[var(--accent-mint)] transition-colors"
+              className="w-full px-4 py-3 rounded-2xl bg-white/8 border-0 text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:bg-white/12 transition-colors"
             />
-            {/* 图标选择器 */}
-            <div className="mt-3">
-              <p className="typo-meta mb-2">选择图标</p>
-              <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
-                {FOLDER_ICON_OPTIONS.map(icon => (
-                  <button
-                    key={icon}
-                    onClick={() => setNewIcon(icon)}
-                    className={`aspect-square rounded-lg flex items-center justify-center text-lg transition-all ${newIcon === icon ? 'bg-[var(--accent-mint)]/20 ring-1 ring-[var(--accent-mint)]' : 'hover:bg-white/5'}`}
-                  >
-                    {icon}
-                  </button>
-                ))}
+
+            {/* 保存位置 — 分组列表，iOS Settings 风格 */}
+            <div className="mt-4">
+              <p className="typo-meta mb-2 px-1">保存位置</p>
+              <div className="ios-pill-note overflow-hidden">
+                {/* 本地 */}
+                <button
+                  onClick={() => setNewFolderLocation('local')}
+                  className="icon-press w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
+                  style={newFolderLocation !== 'local' ? { borderBottom: '0.5px solid var(--glass-border)' } : {}}
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#2dd4bf20' }}>
+                    <Smartphone size={17} style={{ color: '#2dd4bf' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="typo-note-title">本地</div>
+                  </div>
+                  {newFolderLocation === 'local' && <Check size={16} className="text-[var(--accent-mint)] shrink-0" />}
+                </button>
+                {/* 已连接网盘 */}
+                {connectedClouds.map((cloud, idx) => {
+                  const isLast = idx === connectedClouds.length - 1;
+                  const active = newFolderLocation === cloud.provider;
+                  return (
+                    <button
+                      key={cloud.id}
+                      onClick={() => setNewFolderLocation(cloud.provider)}
+                      className="icon-press w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5"
+                      style={!isLast ? { borderBottom: '0.5px solid var(--glass-border)' } : {}}
+                    >
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#a78bfa20' }}>
+                        <Cloud size={17} style={{ color: '#a78bfa' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="typo-note-title">{CLOUD_LABELS[cloud.provider] || cloud.displayName}</div>
+                      </div>
+                      {active && <Check size={16} className="text-[var(--accent-mint)] shrink-0" />}
+                    </button>
+                  );
+                })}
+                {connectedClouds.length === 0 && (
+                  <div className="px-4 py-3 text-center">
+                    <span className="typo-meta">未连接网盘，</span>
+                    <button
+                      onClick={() => { setShowCreator(false); setNewName(''); setNewIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); navigateTo('cloud'); }}
+                      className="typo-meta text-[var(--accent-mint)]"
+                    >
+                      去连接
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
-              <button onClick={() => { setShowCreator(false); setNewName(''); setNewIcon('📁'); }} className="flex-1 px-4 py-2.5 rounded-xl glass typo-body">取消</button>
-              <button onClick={handleCreate} disabled={!newName.trim()} className="flex-1 btn-primary text-sm disabled:opacity-50">创建</button>
+
+            {/* 图标选择 — lucide 线条图标，与统计卡片风格统一 */}
+            <div className="mt-4">
+              <p className="typo-meta mb-2 px-1">选择图标</p>
+              <div className="grid grid-cols-8 gap-2">
+                {FOLDER_ICON_OPTIONS.map(key => {
+                  const Icon = getFolderIcon(key);
+                  const active = newIcon === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setNewIcon(key)}
+                      className={`icon-press aspect-square rounded-xl flex items-center justify-center transition-all ${
+                        active
+                          ? 'ring-1 ring-[var(--accent-mint)]'
+                          : 'ring-0.5 ring-[var(--glass-border)]'
+                      }`}
+                      style={{
+                        background: active
+                          ? 'rgba(45, 212, 191, 0.15)'
+                          : 'var(--glass-bg)',
+                      }}
+                    >
+                      <Icon size={18} className={active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)]'} />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 操作按钮 — iOS 风格 */}
+            <div className="flex gap-2.5 mt-5">
+              <button
+                onClick={() => { setShowCreator(false); setNewName(''); setNewIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); }}
+                className="icon-press flex-1 px-4 py-3 rounded-2xl ios-glass typo-body text-center"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!newName.trim()}
+                className="icon-press flex-1 btn-primary text-sm disabled:opacity-50"
+              >
+                创建
+              </button>
             </div>
           </motion.div>
         </div>

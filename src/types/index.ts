@@ -131,4 +131,5 @@ export interface AppSettings {
   showHomeTitle: boolean;
   homeStatOrder: string[];
   collapsedSections: string[];
+  statIconColor: 'default' | 'accent';
 }

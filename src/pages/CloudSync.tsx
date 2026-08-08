@@ -51,7 +51,7 @@ export function CloudSync() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
-      <div className="mb-6 sm:mb-8">
+      <div className="mb-6 sm:mb-8 pt-14 md:pt-0">
         <h1 className="typo-title mb-1 sm:mb-2">云同步中心</h1>
         <p className="typo-body">连接你的网盘，让笔记自由流动</p>
       </div>

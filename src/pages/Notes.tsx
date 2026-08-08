@@ -83,7 +83,7 @@ export function Notes() {
   const getTitle = () => {
     if (showFavorites) return '置顶笔记';
     if (showAllNotes) return '全部笔记';
-    if (currentFolder) return `${currentFolder.icon} ${currentFolder.name}`;
+    if (currentFolder) return currentFolder.name;
     if (currentTag) return `# ${currentTag.name}`;
     if (searchQuery) return `搜索: "${searchQuery}"`;
     return '全部笔记';
@@ -119,8 +119,8 @@ export function Notes() {
           <p className="typo-meta mt-1">{notes?.length || 0} 条笔记</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 4 种视图切换 */}
-          <div className="flex items-center gap-1 glass rounded-xl p-1">
+          {/* 4 种视图切换 — ios-glass-btn 质感 */}
+          <div className="flex items-center gap-1 ios-glass-btn rounded-xl p-1">
             {viewModes.map(({ mode, icon: Icon }) => (
               <button
                 key={mode}
@@ -136,12 +136,6 @@ export function Notes() {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => { setSelectedNoteId(null); navigateTo('editor'); }}
-            className="btn-primary flex items-center gap-2 text-sm"
-          >
-            <Plus size={18} /> 新建
-          </button>
         </div>
       </div>
 

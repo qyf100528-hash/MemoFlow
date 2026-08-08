@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Home, FileText, Star, Cloud, Package, Settings, Plus, Tag as TagIcon, Edit2, Trash2, Check, X, Briefcase, Lightbulb, Folder as FolderIcon, Clock, ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react';
+import { Home, FileText, Star, Cloud, Package, Settings, Plus, Tag as TagIcon, Edit2, Trash2, Check, X, Folder as FolderIcon, Clock, ChevronDown, ChevronRight, Trash, type LucideIcon } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useStore } from '../../store/useStore';
+import { getFolderIcon } from '../../lib/folderIcons';
 import type { Tag } from '../../types';
-
-const FOLDER_ICONS: Record<string, LucideIcon> = {
-  '💼': Briefcase,
-  '🏡': Home,
-  '💡': Lightbulb,
-};
 
 const TAG_COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#2dd4bf', '#38bdf8', '#a78bfa', '#ec4899', '#64748b'];
 
@@ -57,6 +52,7 @@ export function Sidebar() {
     { id: 'cloud', label: '云同步', icon: Cloud },
     { id: 'migration', label: '数据迁移', icon: Package },
     { id: 'settings', label: '设置', icon: Settings },
+    { id: 'trash', label: '回收站', icon: Trash },
   ];
 
   const handleFolderClick = (folderId: string, folderName: string) => {
@@ -122,7 +118,7 @@ export function Sidebar() {
 
   const renderFolderButton = (f: NonNullable<typeof folders>[number]) => {
     const active = selectedFolderId === f.id && !showFavorites && !showAllNotes;
-    const Icon = FOLDER_ICONS[f.icon] || FolderIcon;
+    const Icon = getFolderIcon(f.icon);
     return (
       <button
         key={f.id}

@@ -124,6 +124,40 @@ export async function cleanupDefaultTags() {
   localStorage.setItem(MIGRATION_KEY, 'done');
 }
 
+// 迁移旧模板内容：移除嵌入的 emoji
+const TEMPLATE_MIGRATION_KEY = 'memoflow-tpl-migrate-v2';
+export async function cleanupTemplateEmojis() {
+  if (localStorage.getItem(TEMPLATE_MIGRATION_KEY)) return;
+  const templates = await db.templates.toArray();
+  const updates: { id: string; content: string }[] = [];
+  for (const tpl of templates) {
+    let updated = false;
+    let content = tpl.content;
+    const emojiReplacements: [RegExp, string][] = [
+      [/^# /gm, ''],
+      [/^📅 /, ''],
+      [/^📋 /, ''],
+      [/^✅ /, ''],
+      [/^📖 /, ''],
+      [/^🚀 /, ''],
+      [/评分：⭐⭐⭐⭐⭐/g, '评分：'],
+      [/^[-*] \[[ x]\] /gm, ''],
+      [/^>/gm, ''],
+    ];
+    for (const [re, replacement] of emojiReplacements) {
+      if (re.test(content)) {
+        content = content.replace(re, replacement);
+        updated = true;
+      }
+    }
+    if (updated) updates.push({ id: tpl.id, content });
+  }
+  if (updates.length > 0) {
+    await Promise.all(updates.map(u => db.templates.update(u.id, { content: u.content })));
+  }
+  localStorage.setItem(TEMPLATE_MIGRATION_KEY, 'done');
+}
+
 // 初始化内置模板
 export async function seedTemplates() {
   const count = await db.templates.count();
@@ -147,7 +181,7 @@ export async function seedTemplates() {
       name: '日记',
       icon: '📅',
       description: '记录今天',
-      content: `📅 {{date}}
+      content: `{{date}}
 
 心情：
 今日记录：
@@ -164,7 +198,7 @@ export async function seedTemplates() {
       name: '会议记录',
       icon: '👥',
       description: '高效会议',
-      content: `📋 会议记录
+      content: `会议记录
 
 日期：{{date}}
 参会人：
@@ -188,7 +222,7 @@ export async function seedTemplates() {
       name: '待办清单',
       icon: '✅',
       description: '今日任务',
-      content: `✅ 待办清单
+      content: `待办清单
 
 {{date}}
 
@@ -206,11 +240,11 @@ export async function seedTemplates() {
       name: '读书笔记',
       icon: '📖',
       description: '深度阅读',
-      content: `📖 《书名》
+      content: `《书名》
 
 作者：
 阅读日期：{{date}}
-评分：⭐⭐⭐⭐⭐
+评分：
 
 核心观点：
 
@@ -229,7 +263,7 @@ export async function seedTemplates() {
       name: '项目计划',
       icon: '🚀',
       description: '项目启动',
-      content: `🚀 项目名称
+      content: `项目名称
 
 开始日期：{{date}}
 负责人：

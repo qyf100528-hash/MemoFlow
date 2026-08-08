@@ -6,6 +6,7 @@ import { FileText, Star, Folder as FolderIcon, Cloud, Smartphone, TrendingUp, Ar
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { getDisplayTitle } from '../lib/note-utils';
+import { FOLDER_ICON_OPTIONS, DEFAULT_FOLDER_ICON, getFolderIcon } from '../lib/folderIcons';
 import { NoteCard } from '../components/notes/NoteCard';
 import { NoteListItem } from '../components/notes/NoteListItem';
 import { KanbanView } from '../components/notes/KanbanView';
@@ -29,10 +30,8 @@ export function Home() {
   const [showViewPicker, setShowViewPicker] = useState(false);
   const [showFolderCreator, setShowFolderCreator] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderIcon, setNewFolderIcon] = useState('📁');
+  const [newFolderIcon, setNewFolderIcon] = useState(DEFAULT_FOLDER_ICON);
   const [newFolderLocation, setNewFolderLocation] = useState<'local' | string>('local');
-
-  const FOLDER_ICON_OPTIONS = ['📁', '💼', '🏡', '💡', '📝', '⭐', '📌', '🎯', '📚', '🎨', '🎵', '✈️', '🏠', '❤️', '🔥', '🌟'];
 
   const CLOUD_LABELS: Record<string, string> = {
     baidu: '百度网盘',
@@ -57,7 +56,7 @@ export function Home() {
       createdAt: Date.now(),
     });
     setNewFolderName('');
-    setNewFolderIcon('📁');
+    setNewFolderIcon(DEFAULT_FOLDER_ICON);
     setNewFolderLocation('local');
     setShowFolderCreator(false);
   };
@@ -99,12 +98,22 @@ export function Home() {
       .slice(0, 5);
   }, [notes, recentItems]);
 
-  // 统计卡片数据 — 按 settings.homeStatOrder 排序
+  // 统计卡片数据 — 按 settings.homeStatOrder 排序；statIconColor='accent' 时统一用外观重点色
+  const useAccent = settings.statIconColor === 'accent';
+  // 重点色 hex 映射（与 App.tsx 的 ACCENT_PRESETS.primary 保持一致，跟随 settings.accentColor）
+  const ACCENT_HEX: Record<string, string> = {
+    mint: '#34d399',
+    ocean: '#06b6d4',
+    sunset: '#fb923c',
+    rose: '#f472b6',
+    violet: '#a78bfa',
+  };
+  const accentHex = ACCENT_HEX[settings.accentColor] || ACCENT_HEX.rose;
   const statsMap: Record<string, { label: string; value: number; icon: typeof FileText; color: string; action: () => void }> = {
-    allNotes: { label: '全部笔记', value: notes?.length || 0, icon: FileText, color: '#2dd4bf', action: () => { setShowAllNotes(true); navigateTo('notes'); } },
-    pinned: { label: '置顶笔记', value: notes?.filter(n => n.isPinned).length || 0, icon: Star, color: '#fbbf24', action: () => { setShowFavorites(true); navigateTo('notes'); } },
-    folders: { label: '文件夹', value: folders?.length || 0, icon: FolderIcon, color: '#38bdf8', action: () => navigateTo('folders') },
-    clouds: { label: '已连接网盘', value: connectedClouds.length, icon: Cloud, color: '#a78bfa', action: () => {
+    allNotes: { label: '全部笔记', value: notes?.length || 0, icon: FileText, color: useAccent ? accentHex : '#2dd4bf', action: () => { setShowAllNotes(true); navigateTo('notes'); } },
+    pinned: { label: '置顶笔记', value: notes?.filter(n => n.isPinned).length || 0, icon: Star, color: useAccent ? accentHex : '#fbbf24', action: () => { setShowFavorites(true); navigateTo('notes'); } },
+    folders: { label: '文件夹', value: folders?.length || 0, icon: FolderIcon, color: useAccent ? accentHex : '#38bdf8', action: () => navigateTo('folders') },
+    clouds: { label: '已连接网盘', value: connectedClouds.length, icon: Cloud, color: useAccent ? accentHex : '#a78bfa', action: () => {
       if (connectedClouds.length > 0) {
         const first = connectedClouds[0];
         const folderId = `folder-cloud-${first.provider}`;
@@ -297,18 +306,18 @@ export function Home() {
             </motion.div>
           )}
 
-          {/* 桌面端视图切换 + 新建文件夹 */}
+          {/* 桌面端视图切换 + 新建文件夹 — ios-glass-btn 质感，与汉堡菜单/移动端一致 */}
           <div className="hidden md:flex shrink-0 items-center gap-2 absolute top-0 right-0">
             <button
               onClick={() => setShowFolderCreator(true)}
-              className="icon-press glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+              className="ios-glass-btn w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
               title="新建文件夹"
             >
               <FolderPlus size={18} />
             </button>
             <button
               onClick={() => setShowViewPicker(!showViewPicker)}
-              className="icon-press glass w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
+              className="ios-glass-btn w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors"
               title="切换视图"
             >
               <LayoutGrid size={18} />
@@ -349,14 +358,14 @@ export function Home() {
         {/* 新建文件夹弹窗 — iOS 玻璃风格，与全应用统一 */}
         <AnimatePresence>
           {showFolderCreator && (
-            <div className="z-50 bg-black/40 backdrop-blur-sm" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon('📁'); setNewFolderLocation('local'); }}>
+            <div className="z-50 bg-black/20" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }} onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.92, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: 20 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 onClick={(e) => e.stopPropagation()}
-                className="ios-glass rounded-[28px] p-5 sm:p-6 w-full max-w-sm"
+                className="glass-strong rounded-[28px] p-5 sm:p-6 w-full max-w-sm"
               >
                 <h3 className="typo-title mb-5">新建文件夹</h3>
 
@@ -414,7 +423,7 @@ export function Home() {
                       <div className="px-4 py-3 text-center">
                         <span className="typo-meta">未连接网盘，</span>
                         <button
-                          onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon('📁'); setNewFolderLocation('local'); navigateTo('cloud'); }}
+                          onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); navigateTo('cloud'); }}
                           className="typo-meta text-[var(--accent-mint)]"
                         >
                           去连接
@@ -424,26 +433,39 @@ export function Home() {
                   </div>
                 </div>
 
-                {/* 图标选择 — 紧凑网格 */}
+                {/* 图标选择 — lucide 线条图标，与统计卡片风格统一 */}
                 <div className="mt-4">
                   <p className="typo-meta mb-2 px-1">选择图标</p>
-                  <div className="grid grid-cols-8 gap-1.5">
-                    {FOLDER_ICON_OPTIONS.map(icon => (
-                      <button
-                        key={icon}
-                        onClick={() => setNewFolderIcon(icon)}
-                        className={`icon-press aspect-square rounded-xl flex items-center justify-center text-lg transition-all ${newFolderIcon === icon ? 'bg-[var(--accent-mint)]/20 ring-1 ring-[var(--accent-mint)]' : 'hover:bg-white/5'}`}
-                      >
-                        {icon}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-8 gap-2">
+                    {FOLDER_ICON_OPTIONS.map(key => {
+                      const Icon = getFolderIcon(key);
+                      const active = newFolderIcon === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setNewFolderIcon(key)}
+                          className={`icon-press aspect-square rounded-xl flex items-center justify-center transition-all ${
+                            active
+                              ? 'ring-1 ring-[var(--accent-mint)]'
+                              : 'ring-0.5 ring-[var(--glass-border)]'
+                          }`}
+                          style={{
+                            background: active
+                              ? 'rgba(45, 212, 191, 0.15)'
+                              : 'var(--glass-bg)',
+                          }}
+                        >
+                          <Icon size={18} className={active ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)]'} />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* 操作按钮 — iOS 风格 */}
                 <div className="flex gap-2.5 mt-5">
                   <button
-                    onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon('📁'); setNewFolderLocation('local'); }}
+                    onClick={() => { setShowFolderCreator(false); setNewFolderName(''); setNewFolderIcon(DEFAULT_FOLDER_ICON); setNewFolderLocation('local'); }}
                     className="icon-press flex-1 px-4 py-3 rounded-2xl ios-glass typo-body text-center"
                   >
                     取消

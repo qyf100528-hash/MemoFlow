@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/core';
 import { db } from '../../lib/db';
 import { getDisplayTitle } from '../../lib/note-utils';
+import { getFolderIcon } from '../../lib/folderIcons';
 import type { Note, Folder, Tag } from '../../types';
 
 interface Props {
@@ -119,7 +120,10 @@ function DroppableColumn({
       {/* 列头 */}
       <div className="glass-card px-4 py-3 mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-base">{column.icon}</span>
+          {(() => {
+            const FIcon = getFolderIcon(column.icon);
+            return <FIcon size={16} style={{ color: column.color }} />;
+          })()}
           <span className="text-sm font-semibold text-[var(--text-primary)]">{column.name}</span>
         </div>
         <span

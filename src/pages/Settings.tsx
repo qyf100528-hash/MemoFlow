@@ -303,6 +303,32 @@ export function Settings() {
                 })}
               </div>
             </div>
+
+            {/* 统计卡片图标颜色 — 默认(多彩) / 重点色(统一) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <label className="typo-label">统计卡片图标颜色</label>
+                <p className="typo-meta mt-0.5">默认为多彩配色，重点色则统一为主题色</p>
+              </div>
+              <div className="ios-segment flex p-1 gap-0.5 shrink-0">
+                {([
+                  { mode: 'default' as const, label: '默认' },
+                  { mode: 'accent' as const, label: '重点色' },
+                ]).map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => updateSettings({ statIconColor: mode })}
+                    className={`ios-segment-btn px-4 py-1.5 rounded-[13px] text-xs font-medium transition-all whitespace-nowrap ${
+                      settings.statIconColor === mode
+                        ? 'active typo-label'
+                        : 'text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
