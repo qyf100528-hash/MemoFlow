@@ -42,9 +42,9 @@
   --shadow-glow: 0 0 24px rgba(244, 114, 182, 0.25);
   --inset-highlight: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
 
-  /* 背景光晕 — 默认海洋 */
-  --glow-primary: #06b6d4;
-  --glow-secondary: #3b82f6;
+  /* 背景光晕 - 默认晴空蓝（运行时由 App.tsx 按主题覆盖） */
+  --glow-primary: #38bdf8;
+  --glow-secondary: #2dd4bf;
 
   /* iOS 连续曲率圆角 */
   --radius-sm: 10px;
@@ -113,12 +113,12 @@ body {
 /* 背景光晕 — 更柔和、更大范围、更慢 */
 .app-bg { position: fixed; inset: 0; z-index: -1; background: var(--bg-primary); overflow: hidden; }
 .app-bg::before, .app-bg::after {
-  content: ''; position: absolute; border-radius: 50%; filter: blur(140px); opacity: 0.28;
+  content: ''; position: absolute; border-radius: 50%; filter: blur(100px);
   animation: float 28s ease-in-out infinite;
 }
-.app-bg::before { width: 600px; height: 600px; background: radial-gradient(circle, var(--glow-primary, var(--accent-mint)), transparent 70%); top: -150px; left: -150px; }
-.app-bg::after { width: 700px; height: 700px; background: radial-gradient(circle, var(--glow-secondary, var(--accent-ocean)), transparent 70%); bottom: -200px; right: -200px; animation-delay: -14s; }
-:root.light .app-bg::before { opacity: 0.12; }
+.app-bg::before { width: 700px; height: 700px; background: radial-gradient(circle, var(--glow-primary, var(--accent-mint)), transparent 70%); top: -100px; left: -100px; opacity: 0.25; }
+.app-bg::after { width: 600px; height: 600px; background: radial-gradient(circle, var(--glow-secondary, var(--accent-ocean)), transparent 70%); bottom: -120px; right: -120px; opacity: 0.15; animation-delay: -14s; }
+:root.light .app-bg::before { opacity: 0.2; }
 :root.light .app-bg::after { opacity: 0.12; }
 
 @keyframes float {

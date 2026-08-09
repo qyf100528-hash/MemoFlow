@@ -103,7 +103,7 @@ export function Home() {
   // 重点色 hex 映射（与 App.tsx 的 ACCENT_PRESETS.primary 保持一致，跟随 settings.accentColor）
   const ACCENT_HEX: Record<string, string> = {
     mint: '#34d399',
-    ocean: '#06b6d4',
+    ocean: '#38bdf8',
     sunset: '#fb923c',
     rose: '#f472b6',
     violet: '#a78bfa',

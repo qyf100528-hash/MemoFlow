@@ -19,7 +19,7 @@ import type { AccentColor } from './types';
 
 const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; gradient: string }> = {
   mint:   { primary: '#34d399', secondary: '#2dd4bf', gradient: 'linear-gradient(135deg, #34d399, #2dd4bf)' },
-  ocean:  { primary: '#06b6d4', secondary: '#3b82f6', gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)' },
+  ocean:  { primary: '#38bdf8', secondary: '#2dd4bf', gradient: 'linear-gradient(135deg, #38bdf8, #2dd4bf)' },
   sunset: { primary: '#fb923c', secondary: '#f43f5e', gradient: 'linear-gradient(135deg, #fb923c, #f43f5e)' },
   rose:   { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #a855f7)' },
   violet: { primary: '#a78bfa', secondary: '#7c3aed', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
@@ -32,8 +32,8 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     light: { primary: '#f0f7f6', secondary: '#ffffff', tertiary: '#e6efee', glowPrimary: '#6ee7b7', glowSecondary: '#5eead4' },
   },
   ocean: {
-    dark:  { primary: '#0a1a24', secondary: '#0f202e', tertiary: '#142838', glowPrimary: '#06b6d4', glowSecondary: '#3b82f6' },
-    light: { primary: '#eef5fb', secondary: '#ffffff', tertiary: '#e0ecf6', glowPrimary: '#22d3ee', glowSecondary: '#60a5fa' },
+    dark:  { primary: '#1c3a52', secondary: '#224562', tertiary: '#285072', glowPrimary: '#38bdf8', glowSecondary: '#2dd4bf' },
+    light: { primary: '#eef7fc', secondary: '#ffffff', tertiary: '#e0eef7', glowPrimary: '#38bdf8', glowSecondary: '#2dd4bf' },
   },
   sunset: {
     dark:  { primary: '#1a0f08', secondary: '#1f140c', tertiary: '#271a10', glowPrimary: '#fb923c', glowSecondary: '#f43f5e' },
