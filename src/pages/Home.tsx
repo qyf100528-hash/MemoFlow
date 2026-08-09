@@ -104,7 +104,7 @@ export function Home() {
   const ACCENT_HEX: Record<string, string> = {
     mint: '#34d399',
     ocean: '#38bdf8',
-    sunset: '#fb923c',
+    sunset: '#f0c419',
     rose: '#f472b6',
     violet: '#a78bfa',
   };

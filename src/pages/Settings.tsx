@@ -13,7 +13,7 @@ import type { AccentColor } from '../types';
 const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
   { id: 'ocean',  label: '晴空',  primary: '#38bdf8', secondary: '#2dd4bf' },
-  { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
+  { id: 'sunset', label: '琥珀',  primary: '#f0c419', secondary: '#e6a800' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
 ];
@@ -22,7 +22,7 @@ const ACCENT_COLORS: { id: AccentColor; label: string; primary: string; secondar
 const BG_COLORS: { id: AccentColor; label: string; primary: string; secondary: string }[] = [
   { id: 'mint',   label: '薄荷',  primary: '#34d399', secondary: '#2dd4bf' },
   { id: 'ocean',  label: '晴空',  primary: '#38bdf8', secondary: '#2dd4bf' },
-  { id: 'sunset', label: '日落',  primary: '#fb923c', secondary: '#f43f5e' },
+  { id: 'sunset', label: '琥珀',  primary: '#f0c419', secondary: '#e6a800' },
   { id: 'rose',   label: '玫瑰',  primary: '#f472b6', secondary: '#c084fc' },
   { id: 'violet', label: '紫罗',  primary: '#a78bfa', secondary: '#7c3aed' },
 ];

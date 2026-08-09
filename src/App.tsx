@@ -20,7 +20,7 @@ import type { AccentColor } from './types';
 const ACCENT_PRESETS: Record<AccentColor, { primary: string; secondary: string; gradient: string }> = {
   mint:   { primary: '#34d399', secondary: '#2dd4bf', gradient: 'linear-gradient(135deg, #34d399, #2dd4bf)' },
   ocean:  { primary: '#38bdf8', secondary: '#2dd4bf', gradient: 'linear-gradient(135deg, #38bdf8, #2dd4bf)' },
-  sunset: { primary: '#fb923c', secondary: '#f43f5e', gradient: 'linear-gradient(135deg, #fb923c, #f43f5e)' },
+  sunset: { primary: '#f0c419', secondary: '#e6a800', gradient: 'linear-gradient(135deg, #f0c419, #e6a800)' },
   rose:   { primary: '#f472b6', secondary: '#c084fc', gradient: 'linear-gradient(135deg, #f472b6, #a855f7)' },
   violet: { primary: '#a78bfa', secondary: '#7c3aed', gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)' },
 };
@@ -36,8 +36,8 @@ const BG_PRESETS: Record<AccentColor, { dark: { primary: string; secondary: stri
     light: { primary: '#eef7fc', secondary: '#ffffff', tertiary: '#e0eef7', glowPrimary: '#38bdf8', glowSecondary: '#2dd4bf' },
   },
   sunset: {
-    dark:  { primary: '#1a0f08', secondary: '#1f140c', tertiary: '#271a10', glowPrimary: '#fb923c', glowSecondary: '#f43f5e' },
-    light: { primary: '#fbf6f0', secondary: '#ffffff', tertiary: '#f6ede2', glowPrimary: '#fdba74', glowSecondary: '#fed7aa' },
+    dark:  { primary: '#7a6210', secondary: '#8a7018', tertiary: '#9a7f20', glowPrimary: '#f0c419', glowSecondary: '#e6a800' },
+    light: { primary: '#f5dd42', secondary: '#f7e266', tertiary: '#f3d837', glowPrimary: '#f0c419', glowSecondary: '#e6a800' },
   },
   rose: {
     dark:  { primary: '#1a0c12', secondary: '#1f1016', tertiary: '#27151d', glowPrimary: '#f472b6', glowSecondary: '#c084fc' },
@@ -55,7 +55,7 @@ const PURE_DARK = { primary: '#000000', secondary: '#0a0a0a', tertiary: '#141414
 const PURE_LIGHT = { primary: '#f2f2f7', secondary: '#ffffff', tertiary: '#e5e5ea', glowPrimary: '#bfdbfe', glowSecondary: '#ddd6fe' };
 
 export default function App() {
-  const { currentPage, settings, resolvedTheme, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack, setResolvedTheme } = useStore();
+  const { currentPage, settings, resolvedTheme, searchQuery, setSearchQuery, showAllNotes, showFavorites, goBack, setResolvedTheme, reopenSidebar, setReopenSidebar } = useStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [logoVisible, setLogoVisible] = useState(false);
 
@@ -100,6 +100,14 @@ export default function App() {
     }, 50);
     return () => clearTimeout(timer);
   }, [currentPage]);
+
+  // 当从汉堡菜单进入的页面返回时，自动打开侧边栏
+  useEffect(() => {
+    if (reopenSidebar) {
+      setSidebarOpen(true);
+      setReopenSidebar(false);
+    }
+  }, [reopenSidebar, setReopenSidebar]);
 
   useEffect(() => {
     seedDatabase();

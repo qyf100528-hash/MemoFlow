@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Home, FileText, Star, Cloud, Package, Settings, Plus, Tag as TagIcon, Edit2, Trash2, Check, X, Folder as FolderIcon, Clock, ChevronDown, ChevronRight, Trash, type LucideIcon } from 'lucide-react';
 import { db } from '../../lib/db';
@@ -23,17 +23,47 @@ const RECENT_ICONS: Record<string, LucideIcon> = {
 
 export function Sidebar() {
   const {
-    currentPage, navigateTo, goHome,
+    currentPage, navigateFromMenu, goHome,
     selectedFolderId, setSelectedFolderId,
     selectedTagId, setSelectedTagId,
     setShowFavorites, setShowAllNotes,
     showFavorites, showAllNotes,
     recentItems, addRecentItem,
+    sidebarScrollPos, setSidebarScrollPos,
   } = useStore();
 
+  const navRef = useRef<HTMLElement>(null);
   const folders = useLiveQuery(() => db.folders.orderBy('sortOrder').toArray(), []);
   const tags = useLiveQuery(() => db.tags.toArray(), []);
   const allCount = useLiveQuery(() => db.notes.filter(n => !n.isArchived).count(), []);
+
+  // 保存侧边栏滚动位置
+  const saveScrollPos = () => {
+    if (navRef.current) {
+      setSidebarScrollPos(navRef.current.scrollTop);
+    }
+  };
+
+  // 实时监听滚动并保存位置
+  const handleNavScroll = () => {
+    if (navRef.current) {
+      setSidebarScrollPos(navRef.current.scrollTop);
+    }
+  };
+
+  // 恢复侧边栏滚动位置（等数据加载完成后再恢复）
+  useEffect(() => {
+    if (navRef.current && sidebarScrollPos > 0) {
+      requestAnimationFrame(() => {
+        if (navRef.current) navRef.current.scrollTop = sidebarScrollPos;
+      });
+    }
+  }, [sidebarScrollPos, folders, tags]);
+
+  // 侧边栏关闭时保存滚动位置（兜底）
+  useEffect(() => {
+    return () => { saveScrollPos(); };
+  }, []);
 
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
@@ -44,8 +74,8 @@ export function Sidebar() {
 
   const navItems = [
     { id: 'home', label: '首页', icon: Home, action: goHome },
-    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); navigateTo('notes'); } },
-    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); navigateTo('notes'); } },
+    { id: 'notes', label: '全部笔记', icon: FileText, count: allCount, action: () => { setShowAllNotes(true); navigateFromMenu('notes'); } },
+    { id: 'favorites', label: '置顶', icon: Star, action: () => { setShowFavorites(true); navigateFromMenu('notes'); } },
   ];
 
   const cloudItems = [
@@ -56,8 +86,9 @@ export function Sidebar() {
   ];
 
   const handleFolderClick = (folderId: string, folderName: string) => {
+    saveScrollPos();
     setSelectedFolderId(folderId);
-    navigateTo('notes');
+    navigateFromMenu('notes');
   };
 
   // ============ 标签操作 ============
@@ -139,7 +170,7 @@ export function Sidebar() {
     return (
       <div key={t.id} className="group flex items-center gap-1">
         <button
-          onClick={() => { setSelectedTagId(t.id); navigateTo('notes'); }}
+          onClick={() => { saveScrollPos(); setSelectedTagId(t.id); navigateFromMenu('notes'); }}
           className={`flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all ${
             active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
@@ -161,15 +192,16 @@ export function Sidebar() {
   };
 
   const handleRecentClick = (item: typeof recentItems[number]) => {
+    saveScrollPos();
     if (item.icon === 'note') {
       useStore.getState().setSelectedNoteId(item.id);
-      navigateTo('editor');
-    } else if (item.id === 'allNotes') { setShowAllNotes(true); navigateTo('notes'); }
-    else if (item.id === 'pinned') { setShowFavorites(true); navigateTo('notes'); }
+      navigateFromMenu('editor');
+    } else if (item.id === 'allNotes') { setShowAllNotes(true); navigateFromMenu('notes'); }
+    else if (item.id === 'pinned') { setShowFavorites(true); navigateFromMenu('notes'); }
     else if (item.id === 'home') { goHome(); }
-    else if (item.id.startsWith('folder-cloud-')) { setSelectedFolderId(item.id); navigateTo('notes'); }
-    else if (item.id.startsWith('folder-')) { setSelectedFolderId(item.id); navigateTo('notes'); }
-    else { setSelectedTagId(item.id); navigateTo('notes'); }
+    else if (item.id.startsWith('folder-cloud-')) { setSelectedFolderId(item.id); navigateFromMenu('notes'); }
+    else if (item.id.startsWith('folder-')) { setSelectedFolderId(item.id); navigateFromMenu('notes'); }
+    else { setSelectedTagId(item.id); navigateFromMenu('notes'); }
   };
 
   return (
@@ -190,7 +222,7 @@ export function Sidebar() {
       {/* 新建笔记 */}
       <div className="px-4 pb-3">
         <button
-          onClick={() => { navigateTo('editor'); useStore.getState().setSelectedNoteId(null); }}
+          onClick={() => { saveScrollPos(); navigateFromMenu('editor'); useStore.getState().setSelectedNoteId(null); }}
           className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
         >
           <Plus size={18} /> 新建笔记
@@ -198,7 +230,7 @@ export function Sidebar() {
       </div>
 
       {/* 导航 */}
-      <nav className="flex-1 overflow-y-auto px-3">
+      <nav ref={navRef} onScroll={handleNavScroll} className="flex-1 overflow-y-auto px-3">
         <div className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -206,7 +238,7 @@ export function Sidebar() {
             return (
               <button
                 key={item.id}
-                onClick={() => item.action ? item.action() : navigateTo(item.id)}
+                onClick={() => { saveScrollPos(); item.action ? item.action() : navigateFromMenu(item.id); }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                   active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
@@ -319,7 +351,7 @@ export function Sidebar() {
             return (
               <button
                 key={item.id}
-                onClick={() => navigateTo(item.id)}
+                onClick={() => { saveScrollPos(); navigateFromMenu(item.id); }}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                   active ? 'text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}

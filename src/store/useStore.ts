@@ -42,8 +42,15 @@ interface AppState {
 
   setCurrentPage: (page: string) => void;
   navigateTo: (page: string) => void;
+  navigateFromMenu: (page: string) => void;
   goBack: () => void;
   goHome: () => void;
+  // 从汉堡菜单进入页面后，返回时重新打开侧边栏
+  menuReturnPage: string | null;
+  reopenSidebar: boolean;
+  setReopenSidebar: (v: boolean) => void;
+  sidebarScrollPos: number;
+  setSidebarScrollPos: (pos: number) => void;
   setSelectedFolderId: (id: string | null) => void;
   setSelectedTagId: (id: string | null) => void;
   setSelectedNoteId: (id: string | null) => void;
@@ -93,6 +100,9 @@ export const useStore = create<AppState>()(
       currentPage: 'home',
       pageHistory: [],
       scrollPositions: {},
+      menuReturnPage: null,
+      reopenSidebar: false,
+      sidebarScrollPos: 0,
       selectedFolderId: null,
       selectedTagId: null,
       selectedNoteId: null,
@@ -118,6 +128,18 @@ export const useStore = create<AppState>()(
         };
       }),
 
+      // 从汉堡菜单导航到新页面：记录打开菜单前的页面，返回时回到菜单
+      navigateFromMenu: (page) => set((s) => {
+        if (s.currentPage === page) return {};
+        const scrollTop = getMainScrollTop();
+        return {
+          menuReturnPage: s.currentPage,
+          currentPage: page,
+          pageHistory: [...s.pageHistory, s.currentPage],
+          scrollPositions: { ...s.scrollPositions, [s.currentPage]: scrollTop },
+        };
+      }),
+
       // 返回上一页：从历史栈弹出 + 保存当前滚动位置
       goBack: () => set((s) => {
         const scrollTop = getMainScrollTop();
@@ -126,17 +148,20 @@ export const useStore = create<AppState>()(
         if (s.pageHistory.length > 0) {
           const history = [...s.pageHistory];
           const prev = history.pop()!;
+          // 若返回目标是打开汉堡菜单前的页面，重新打开侧边栏
+          const reopen = s.menuReturnPage !== null && prev === s.menuReturnPage;
+          const menuState = { menuReturnPage: reopen ? null : s.menuReturnPage, reopenSidebar: reopen };
           if (prev === 'home') {
-            return { currentPage: prev, pageHistory: history, scrollPositions, showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null, searchQuery: '' };
+            return { currentPage: prev, pageHistory: history, scrollPositions, showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null, searchQuery: '', ...menuState };
           }
           // 返回 notes 页时保留筛选状态
-          return { currentPage: prev, pageHistory: history, scrollPositions };
+          return { currentPage: prev, pageHistory: history, scrollPositions, ...menuState };
         }
         // 无历史记录时的兜底：根据筛选状态判断
         if (s.showAllNotes || s.showFavorites || s.selectedFolderId || s.selectedTagId || s.searchQuery) {
-          return { currentPage: 'notes', scrollPositions };
+          return { currentPage: 'notes', scrollPositions, menuReturnPage: null, reopenSidebar: false };
         }
-        return { currentPage: 'home', pageHistory: [], scrollPositions, showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null, searchQuery: '' };
+        return { currentPage: 'home', pageHistory: [], scrollPositions, showFavorites: false, showAllNotes: false, selectedFolderId: null, selectedTagId: null, searchQuery: '', menuReturnPage: null, reopenSidebar: false };
       }),
 
       // 直接回首页：清空历史栈 + 重置筛选
@@ -158,6 +183,8 @@ export const useStore = create<AppState>()(
       setShowAllNotes: (v) => set({ showAllNotes: v, showFavorites: false, selectedFolderId: null, selectedTagId: null, searchQuery: '', notesCache: null }),
       setTheme: (theme) => set((s) => ({ settings: { ...s.settings, theme }, resolvedTheme: resolveTheme(theme) })),
       setResolvedTheme: (theme) => set({ resolvedTheme: theme }),
+      setReopenSidebar: (v) => set({ reopenSidebar: v }),
+      setSidebarScrollPos: (pos) => set({ sidebarScrollPos: pos }),
       setViewMode: (mode) => set((s) => ({ settings: { ...s.settings, viewMode: mode } })),
       setHomeViewMode: (mode) => set((s) => ({ settings: { ...s.settings, homeViewMode: mode } })),
       setFoldersViewMode: (mode) => set((s) => ({ settings: { ...s.settings, foldersViewMode: mode } })),
