@@ -6,6 +6,7 @@ import { useStore } from './store/useStore';
 import { seedDatabase, cleanupDefaultTags, seedTemplates, cleanupTemplateEmojis } from './lib/db';
 import { tokenRefreshService } from './lib/cloud/token-refresh-service';
 import { syncService } from './lib/cloud/sync-service';
+import { trashCleanupService } from './lib/trash-cleanup';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { Home } from './pages/Home';
@@ -117,9 +118,11 @@ export default function App() {
     seedTemplates();
     tokenRefreshService.start();
     syncService.start();
+    trashCleanupService.start();
     return () => {
       tokenRefreshService.stop();
       syncService.stop();
+      trashCleanupService.stop();
     };
   }, []);
 

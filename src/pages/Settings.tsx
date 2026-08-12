@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor, Wand2, ArrowUp, ArrowDown, LayoutGrid, Keyboard } from 'lucide-react';
+import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor, Wand2, ArrowUp, ArrowDown, LayoutGrid, Keyboard, Trash } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { createTemplate, deleteTemplate } from '../lib/templates';
+import { trashCleanupService } from '../lib/trash-cleanup';
 import type { NoteTemplate } from '../types';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { hasApiKey } from '../lib/ai/deepseek';
@@ -32,7 +33,13 @@ export function Settings() {
   const noteCount = useLiveQuery(() => db.notes.count(), []);
   const folderCount = useLiveQuery(() => db.folders.count(), []);
   const tagCount = useLiveQuery(() => db.tags.count(), []);
+  const trashCount = useLiveQuery(() => db.notes.filter(n => !!n.isArchived).count(), []) ?? 0;
   const [showApiKey, setShowApiKey] = useState(false);
+  const [cleanToast, setCleanToast] = useState<string | null>(null);
+  const showCleanToast = (msg: string) => {
+    setCleanToast(msg);
+    setTimeout(() => setCleanToast(null), 2500);
+  };
   const templates = useLiveQuery(() => db.templates.orderBy('createdAt').toArray(), []);
   const [showNewTemplate, setShowNewTemplate] = useState(false);
   const [newTplName, setNewTplName] = useState('');
@@ -363,25 +370,89 @@ export function Settings() {
               onChange={(v) => updateSettings({ spellCheck: v })}
             />
           </div>
+        </section>
 
-          {/* 键盘快捷键说明 */}
-          <div className="mt-4 pt-4" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
-            <h3 className="typo-label mb-3 flex items-center gap-2"><Keyboard size={15} /> 键盘快捷键</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-              {[
-                ['⌘ / Ctrl + B', '加粗选中文本'],
-                ['⌘ / Ctrl + I', '斜体选中文本'],
-                ['⌘ / Ctrl + K', '插入笔记链接'],
-                ['⌘ / Ctrl + E', '插入代码块'],
-                ['⌘ / Ctrl + Enter', '保存当前笔记'],
-                ['Esc', '退出编辑（自动保存）'],
-              ].map(([key, desc]) => (
-                <div key={key} className="flex items-center justify-between gap-2 typo-meta">
-                  <span className="text-[var(--text-primary)]">{desc}</span>
-                  <kbd className="px-2 py-0.5 rounded-md glass text-xs font-mono shrink-0">{key}</kbd>
-                </div>
-              ))}
+        {/* 回收站 */}
+        <section className="glass-card p-4 sm:p-6">
+          <h2 className="typo-section mb-3 sm:mb-4 flex items-center gap-2">
+            <Trash size={18} className="text-[var(--accent-mint)]" /> 回收站
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <p className="typo-label mb-2">自动清理</p>
+              <p className="typo-meta mb-3">超过保留天数的回收站笔记将被永久删除，避免占用空间。</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { days: 0, label: '永久保留' },
+                  { days: 7, label: '7 天' },
+                  { days: 30, label: '30 天' },
+                  { days: 90, label: '90 天' },
+                ].map(opt => (
+                  <button
+                    key={opt.days}
+                    onClick={() => updateSettings({ trashRetentionDays: opt.days })}
+                    className={`icon-press px-3.5 h-9 rounded-xl text-sm transition-all ${
+                      settings.trashRetentionDays === opt.days
+                        ? 'bg-[var(--accent-mint)]/15 text-[var(--accent-mint)] font-semibold'
+                        : 'glass text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {trashCount > 0 && (
+                <p className="typo-meta mt-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent-mint)' }} />
+                  回收站中现有 {trashCount} 条笔记
+                </p>
+              )}
             </div>
+            <div className="flex flex-wrap gap-2 pt-2" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
+              <button
+                onClick={async () => {
+                  const n = await trashCleanupService.forceCleanup(settings.trashRetentionDays);
+                  if (n > 0) showCleanToast(`已清理 ${n} 条过期笔记`);
+                  else showCleanToast('回收站中没有过期笔记');
+                }}
+                disabled={trashCount === 0}
+                className="icon-press glass px-3.5 h-9 rounded-xl text-sm flex items-center gap-2 disabled:opacity-40 text-[var(--text-primary)] hover:text-[var(--accent-mint)]"
+              >
+                <Sparkles size={15} /> 立即清理过期笔记
+              </button>
+            </div>
+          </div>
+          {cleanToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="typo-meta mt-3 flex items-center gap-1.5"
+              style={{ color: 'var(--accent-mint)' }}
+            >
+              <Check size={14} /> {cleanToast}
+            </motion.div>
+          )}
+        </section>
+
+        {/* 键盘快捷键说明 */}
+        <section className="glass-card p-4 sm:p-6">
+          <h2 className="typo-section mb-3 sm:mb-4 flex items-center gap-2">
+            <Keyboard size={18} className="text-[var(--accent-mint)]" /> 键盘快捷键
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+            {[
+              ['⌘ / Ctrl + B', '加粗选中文本'],
+              ['⌘ / Ctrl + I', '斜体选中文本'],
+              ['⌘ / Ctrl + K', '插入笔记链接'],
+              ['⌘ / Ctrl + E', '插入代码块'],
+              ['⌘ / Ctrl + Enter', '保存当前笔记'],
+              ['Esc', '退出编辑（自动保存）'],
+            ].map(([key, desc]) => (
+              <div key={key} className="flex items-center justify-between gap-2 typo-meta">
+                <span className="text-[var(--text-primary)]">{desc}</span>
+                <kbd className="px-2 py-0.5 rounded-md glass text-xs font-mono shrink-0">{key}</kbd>
+              </div>
+            ))}
           </div>
         </section>
 

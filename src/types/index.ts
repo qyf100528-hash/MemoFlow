@@ -147,4 +147,6 @@ export interface AppSettings {
   homeStatOrder: string[];
   collapsedSections: string[];
   statIconColor: 'default' | 'accent';
+  /** 回收站笔记保留天数；0 表示永久保留 */
+  trashRetentionDays: number;
 }

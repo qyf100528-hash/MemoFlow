@@ -93,6 +93,7 @@ const defaultSettings: AppSettings = {
   homeStatOrder: ['allNotes', 'pinned', 'folders', 'clouds'],
   collapsedSections: [],
   statIconColor: 'default',
+  trashRetentionDays: 30,
 };
 
 // ── 加密持久化存储 ──────────────────────────────────
@@ -279,6 +280,10 @@ export const useStore = create<AppState>()(
           if (!Array.isArray(s.settings.homeStatOrder) || s.settings.homeStatOrder.length === 0) s.settings.homeStatOrder = ['allNotes', 'pinned', 'folders', 'clouds'];
           if (!Array.isArray(s.settings.collapsedSections)) s.settings.collapsedSections = [];
           if (s.settings.statIconColor !== 'accent' && s.settings.statIconColor !== 'default') s.settings.statIconColor = 'default';
+          // v13: 回收站自动清理保留天数 (默认 30 天)
+          if (typeof s.settings.trashRetentionDays !== 'number' || s.settings.trashRetentionDays < 0) {
+            s.settings.trashRetentionDays = 30;
+          }
           const old = s.settings as unknown as Record<string, unknown>;
           delete old.customAccent;
           delete old.customBg;
