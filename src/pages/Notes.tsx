@@ -92,12 +92,34 @@ export function Notes() {
     setTimeout(() => setToast(null), 2500);
   };
 
+  // 触觉反馈: 选中/取消/长按时调用；不支持 navigator.vibrate 时静默忽略
+  const haptic = (pattern: number | number[] = 10) => {
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(pattern);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const wasSelected = next.has(id);
+      if (wasSelected) next.delete(id); else next.add(id);
+      // 选择时给一个轻微的触感反馈
+      haptic(wasSelected ? 8 : 12);
       return next;
     });
+  };
+
+  const enterSelectMode = (initialId?: string) => {
+    setSelectMode(true);
+    haptic(15);
+    if (initialId) {
+      setSelectedIds(new Set([initialId]));
+    }
   };
 
   const exitSelectMode = () => {
@@ -252,7 +274,20 @@ export function Notes() {
       {/* 头部 — 标题下移避开返回按钮，与右侧按钮同一行对齐 */}
       <div className="flex items-center justify-between mb-6 pt-14 md:pt-0">
         <div>
-          <h1 className="typo-title">{getTitle()}</h1>
+          <h1 className="typo-title flex items-center gap-2">
+            {selectMode && (
+              <motion.span
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg"
+                style={{ background: 'var(--accent-mint)', color: '#0f1419' }}
+              >
+                <CheckSquare size={16} />
+              </motion.span>
+            )}
+            {selectMode ? '多选' : getTitle()}
+          </h1>
           <p className="typo-meta mt-1">{selectMode ? `已选 ${selectedIds.size} / ${notes?.length || 0}` : `${notes?.length || 0} 条笔记`}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -263,8 +298,10 @@ export function Notes() {
                 onClick={() => {
                   if (notes && selectedIds.size === notes.length) {
                     setSelectedIds(new Set());
+                    haptic(8);
                   } else {
                     setSelectedIds(new Set((notes || []).map(n => n.id)));
+                    haptic(15);
                   }
                 }}
                 className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
@@ -382,6 +419,7 @@ export function Notes() {
                   onClick={() => selectMode ? toggleSelect(note.id) : handleNoteClick(note.id)}
                   selectMode={selectMode}
                   selected={selectedIds.has(note.id)}
+                  onLongPress={() => enterSelectMode(note.id)}
                 />
               ))}
             </div>
@@ -400,6 +438,7 @@ export function Notes() {
                   index={i}
                   selectMode={selectMode}
                   selected={selectedIds.has(note.id)}
+                  onLongPress={() => enterSelectMode(note.id)}
                 />
               ))}
             </div>

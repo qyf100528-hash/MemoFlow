@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 import { Pin, Lock, Paperclip, CheckSquare, Square } from 'lucide-react';
 import type { Note, Tag } from '../../types';
@@ -12,14 +12,33 @@ interface NoteCardProps {
   index?: number;
   selectMode?: boolean;
   selected?: boolean;
+  onLongPress?: () => void;
 }
 
-export function NoteCard({ note, tags, folderName, onClick, index = 0, selectMode, selected }: NoteCardProps) {
+export function NoteCard({ note, tags, folderName, onClick, index = 0, selectMode, selected, onLongPress }: NoteCardProps) {
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
   const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
   // 空内容时显示文件夹名或占位文字
   const preview = rawPreview || (folderName ? folderName : '无内容');
   const title = getDisplayTitle(note);
+
+  // 长按检测
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+  const startLongPress = () => {
+    longPressTriggered.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      onLongPress?.();
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+  const handleCardClick = () => {
+    if (longPressTriggered.current) return;
+    onClick();
+  };
 
   // 动态对齐：短标题居中，长标题（接近溢出）左对齐
   const titleRef = useRef<HTMLDivElement>(null);
@@ -48,17 +67,29 @@ export function NoteCard({ note, tags, folderName, onClick, index = 0, selectMod
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: index * 0.04, ease: [0.4, 0, 0.2, 1] }}
-      onClick={onClick}
+      onClick={handleCardClick}
+      onPointerDown={startLongPress}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
       className={`cursor-pointer group flex flex-col ${selected ? 'note-grid-card-selected' : ''}`}
     >
       {/* 预览卡片 — 内部只显示内容 */}
       <div className="note-grid-card-inner relative">
-        {/* 多选状态角标 */}
-        {selectMode && (
-          <div className="absolute top-1.5 right-1.5 z-10">
-            {selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
-          </div>
-        )}
+        {/* 多选状态角标 — 弹簧动画 */}
+        <AnimatePresence>
+          {selectMode && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+              className="absolute top-1.5 right-1.5 z-10"
+            >
+              {selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current drop-shadow" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* 顶部状态图标 — 极淡 */}
         <div className="flex items-center gap-1 mb-1.5 opacity-60">
           {note.isPinned && <Pin size={10} className="text-[var(--accent-mint)] fill-current shrink-0" />}

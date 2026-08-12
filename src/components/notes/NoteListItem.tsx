@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion';
+import { useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Pin, Lock, CheckSquare, Square } from 'lucide-react';
 import type { Note, Tag } from '../../types';
 import { getDisplayTitle } from '../../lib/note-utils';
@@ -12,9 +13,10 @@ interface NoteListItemProps {
   onClick: () => void;
   selectMode?: boolean;
   selected?: boolean;
+  onLongPress?: () => void;
 }
 
-export function NoteListItem({ note, tags, folderName, onClick, selectMode, selected }: NoteListItemProps) {
+export function NoteListItem({ note, tags, folderName, onClick, selectMode, selected, onLongPress }: NoteListItemProps) {
   const { searchQuery } = useStore();
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
   const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
@@ -26,23 +28,63 @@ export function NoteListItem({ note, tags, folderName, onClick, selectMode, sele
     ? getMatchedSnippet(preview, searchQuery.trim(), 80)
     : preview;
 
+  // 长按计时器引用
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressTriggered = useRef(false);
+
+  const startLongPress = () => {
+    longPressTriggered.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressTriggered.current = true;
+      onLongPress?.();
+    }, 500);
+  };
+  const cancelLongPress = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+  const handleClick = () => {
+    if (longPressTriggered.current) return; // 长按触发的，不重复 click
+    onClick();
+  };
+
   return (
     <motion.button
-      onClick={onClick}
+      onClick={handleClick}
+      onPointerDown={startLongPress}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
+      onPointerCancel={cancelLongPress}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className={`ios-pill-note w-full text-left flex items-center gap-3 px-4 py-2.5 ${selected ? 'ring-1 ring-[var(--accent-mint)] bg-[var(--accent-mint)]/5' : ''}`}
+      className={`ios-pill-note w-full text-left flex items-center gap-3 px-4 py-2.5 relative ${selected ? 'ring-1 ring-[var(--accent-mint)] bg-[var(--accent-mint)]/5' : ''}`}
     >
       {/* 左侧：多选框 / 置顶锁定标记 */}
-      <div className="flex flex-col items-center gap-1.5 shrink-0 w-5">
-        {selectMode ? (
-          selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current" /> : <Square size={16} className="text-[var(--text-secondary)]" />
-        ) : (
-          <>
-            {note.isPinned && <Pin size={13} className="text-[var(--accent-mint)] fill-current" />}
-            {note.isLocked && <Lock size={13} className="text-[var(--accent-ocean)]" />}
-          </>
-        )}
+      <div className="flex flex-col items-center gap-1.5 shrink-0 w-5 relative">
+        <AnimatePresence mode="wait">
+          {selectMode ? (
+            <motion.span
+              key={selected ? 'on' : 'off'}
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+            >
+              {selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
+            </motion.span>
+          ) : (
+            <motion.span
+              key="icons"
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.6, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col items-center gap-1.5"
+            >
+              {note.isPinned && <Pin size={13} className="text-[var(--accent-mint)] fill-current" />}
+              {note.isLocked && <Lock size={13} className="text-[var(--accent-ocean)]" />}
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 中间：标题 + 摘要 */}
