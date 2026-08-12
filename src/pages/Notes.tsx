@@ -1,7 +1,7 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, Square, Download, X, FileDown, FolderDown, Database, Upload } from 'lucide-react';
+import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, Square, Download, X, FileDown, FolderDown, Database, Upload, Tag as TagIcon, Folder as FolderIcon, Trash2 } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -9,6 +9,7 @@ import { NoteListItem } from '../components/notes/NoteListItem';
 import { KanbanView } from '../components/notes/KanbanView';
 import { TimelineView } from '../components/notes/TimelineView';
 import { exportNotesAsZip, exportFullBackup, importFullBackup } from '../lib/export';
+import { getFolderIcon } from '../lib/folderIcons';
 
 export function Notes() {
   const {
@@ -82,6 +83,8 @@ export function Notes() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [showTagPickerSheet, setShowTagPickerSheet] = useState(false);
+  const [showFolderPickerSheet, setShowFolderPickerSheet] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (type: 'success' | 'error', msg: string) => {
@@ -101,7 +104,25 @@ export function Notes() {
     setSelectMode(false);
     setSelectedIds(new Set());
     setShowExportMenu(false);
+    setShowTagPickerSheet(false);
+    setShowFolderPickerSheet(false);
   };
+
+  // 多选模式快捷键: Esc 退出; Cmd/Ctrl+A 全选当前列表
+  useEffect(() => {
+    if (!selectMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        exitSelectMode();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        if (notes) setSelectedIds(new Set(notes.map(n => n.id)));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectMode, notes]);
 
   const handleBatchExport = async () => {
     if (selectedIds.size === 0) return;
@@ -145,6 +166,50 @@ export function Notes() {
       setExportBusy(false);
       setShowExportMenu(false);
     }
+  };
+
+  const handleBatchTag = (tagId: string) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    Promise.all(ids.map(id => db.notes.get(id))).then(notesList => {
+      const updates = notesList.filter(Boolean).map(n => ({
+        ...n!,
+        tagIds: n!.tagIds.includes(tagId) ? n!.tagIds : [...n!.tagIds, tagId],
+        updatedAt: Date.now(),
+      }));
+      db.notes.bulkPut(updates).then(() => {
+        showToast('success', `已为 ${updates.length} 条笔记添加标签`);
+        exitSelectMode();
+      });
+    });
+  };
+
+  const handleBatchMove = (folderId: string | null) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    db.transaction('rw', db.notes, async () => {
+      for (const id of ids) {
+        await db.notes.update(id, { folderId, updatedAt: Date.now() });
+      }
+    }).then(() => {
+      showToast('success', `已移动 ${ids.length} 条笔记`);
+      exitSelectMode();
+    });
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    if (!confirm(`确定将 ${count} 条笔记移入回收站？`)) return;
+    const ids = Array.from(selectedIds);
+    db.transaction('rw', db.notes, async () => {
+      for (const id of ids) {
+        await db.notes.update(id, { isArchived: true, updatedAt: Date.now() });
+      }
+    }).then(() => {
+      showToast('success', `已移入回收站 ${count} 条笔记`);
+      exitSelectMode();
+    });
   };
 
   // 检测是否选择了未连接的网盘文件夹
@@ -191,8 +256,8 @@ export function Notes() {
           <p className="typo-meta mt-1">{selectMode ? `已选 ${selectedIds.size} / ${notes?.length || 0}` : `${notes?.length || 0} 条笔记`}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 多选模式工具栏 */}
-          {selectMode ? (
+          {/* 多选模式工具栏 — 极简顶部：仅全选 + 取消 */}
+          {selectMode && (
             <>
               <button
                 onClick={() => {
@@ -208,15 +273,6 @@ export function Notes() {
                 <CheckSquare size={15} /> 全选
               </button>
               <button
-                onClick={handleBatchExport}
-                disabled={selectedIds.size === 0 || exportBusy}
-                className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm disabled:opacity-40 transition-colors"
-                style={{ color: selectedIds.size > 0 ? 'var(--accent-mint)' : 'var(--text-secondary)' }}
-                title="批量导出所选笔记"
-              >
-                <FileDown size={15} /> 导出
-              </button>
-              <button
                 onClick={exitSelectMode}
                 className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title="退出多选"
@@ -224,7 +280,7 @@ export function Notes() {
                 <X size={18} />
               </button>
             </>
-          ) : (
+          )}
             <>
               {/* 多选/导入按钮 */}
               <button
@@ -311,7 +367,6 @@ export function Notes() {
                 ))}
               </div>
             </>
-          )}
         </div>
       </div>
 
@@ -434,6 +489,160 @@ export function Notes() {
         </motion.div>
       )}
 
+      {/* 底部多选操作栏 */}
+      <AnimatePresence>
+        {selectMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 60 }}
+            transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+            className="fixed bottom-0 left-0 right-0 z-40"
+          >
+            <div className="ios-glass border-t border-[var(--glass-border)] px-3 sm:px-6 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+              <div className="max-w-3xl mx-auto flex items-center gap-2 sm:gap-3">
+                {/* 已选数量 — 展示当前进度 */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0" style={{ color: 'var(--accent-mint)' }}>
+                  <CheckSquare size={14} />
+                  <span className="typo-label">{selectedIds.size}</span>
+                </div>
+
+                {/* 主操作按钮 */}
+                <div className="flex-1 flex items-center justify-end gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                  <button
+                    onClick={() => setShowTagPickerSheet(true)}
+                    disabled={selectedIds.size === 0}
+                    className="icon-press glass h-10 px-3.5 rounded-xl flex items-center gap-2 text-sm shrink-0 disabled:opacity-40 text-[var(--text-primary)] hover:text-[var(--accent-mint)]"
+                    title="批量打标签"
+                  >
+                    <TagIcon size={15} /> <span className="hidden sm:inline">标签</span>
+                  </button>
+                  <button
+                    onClick={() => setShowFolderPickerSheet(true)}
+                    disabled={selectedIds.size === 0}
+                    className="icon-press glass h-10 px-3.5 rounded-xl flex items-center gap-2 text-sm shrink-0 disabled:opacity-40 text-[var(--text-primary)] hover:text-[var(--accent-mint)]"
+                    title="批量移动"
+                  >
+                    <FolderIcon size={15} /> <span className="hidden sm:inline">移动</span>
+                  </button>
+                  <button
+                    onClick={handleBatchExport}
+                    disabled={selectedIds.size === 0 || exportBusy}
+                    className="icon-press glass h-10 px-3.5 rounded-xl flex items-center gap-2 text-sm shrink-0 disabled:opacity-40 text-[var(--text-primary)] hover:text-[var(--accent-mint)]"
+                    title="批量导出"
+                  >
+                    <FileDown size={15} /> <span className="hidden sm:inline">导出</span>
+                  </button>
+                  <button
+                    onClick={handleBatchDelete}
+                    disabled={selectedIds.size === 0}
+                    className="icon-press h-10 w-10 rounded-xl flex items-center justify-center shrink-0 disabled:opacity-40 text-[var(--text-secondary)] hover:text-red-400 transition-colors"
+                    title="批量移到回收站"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 批量选择标签 — 底部 Action Sheet */}
+      <AnimatePresence>
+        {showTagPickerSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTagPickerSheet(false)}
+              className="fixed inset-0 z-50 bg-black/40"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+              className="fixed bottom-0 left-0 right-0 z-50 ios-glass rounded-t-2xl p-5 pb-8 max-h-[70vh] overflow-y-auto"
+            >
+              <div className="w-10 h-1 bg-[var(--text-secondary)] rounded-full mx-auto mb-4 opacity-30" />
+              <div className="flex items-center gap-2 mb-4">
+                <TagIcon size={18} className="text-[var(--accent-mint)]" />
+                <span className="typo-note-title">批量添加标签</span>
+                <span className="typo-meta">为 {selectedIds.size} 条笔记</span>
+                <button onClick={() => setShowTagPickerSheet(false)} className="ml-auto typo-meta text-[var(--accent-mint)]">取消</button>
+              </div>
+              {tags && tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => { handleBatchTag(t.id); setShowTagPickerSheet(false); }}
+                      className="icon-press px-3.5 py-2 rounded-full text-sm flex items-center gap-1.5 transition-all ios-glass-btn text-[var(--text-primary)]"
+                    >
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: t.color }} />
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center py-8 typo-meta">暂无标签</p>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 批量选择文件夹 — 底部 Action Sheet */}
+      <AnimatePresence>
+        {showFolderPickerSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFolderPickerSheet(false)}
+              className="fixed inset-0 z-50 bg-black/40"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+              className="fixed bottom-0 left-0 right-0 z-50 ios-glass rounded-t-2xl p-4 pb-8 max-h-[60vh] overflow-y-auto"
+            >
+              <div className="w-10 h-1 bg-[var(--text-secondary)] rounded-full mx-auto mb-3 opacity-30" />
+              <div className="flex items-center gap-2 mb-3">
+                <FolderIcon size={16} className="text-[var(--accent-mint)]" />
+                <span className="typo-label">批量移动 {selectedIds.size} 条笔记</span>
+                <button onClick={() => setShowFolderPickerSheet(false)} className="ml-auto typo-meta text-[var(--accent-mint)]">取消</button>
+              </div>
+              <div className="space-y-1">
+                <button
+                  onClick={() => { handleBatchMove(null); setShowFolderPickerSheet(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-[var(--text-primary)] hover:bg-white/5"
+                >
+                  <FolderIcon size={18} /> 本地
+                </button>
+                {(folders || []).filter(f => !f.id.startsWith('folder-cloud-')).map(f => {
+                  const FIcon = getFolderIcon(f.icon);
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => { handleBatchMove(f.id); setShowFolderPickerSheet(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-[var(--text-primary)] hover:bg-white/5"
+                    >
+                      <FIcon size={18} /> {f.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Toast 提示 */}
       <AnimatePresence>
         {toast && (
@@ -442,7 +651,7 @@ export function Notes() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50"
           >
             <div
               className="glass-strong rounded-2xl px-4 py-2.5 text-sm shadow-lg flex items-center gap-2"
