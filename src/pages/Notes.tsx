@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { motion } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, Square, Download, X, FileDown, FolderDown, Database, Upload } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
 import { NoteListItem } from '../components/notes/NoteListItem';
 import { KanbanView } from '../components/notes/KanbanView';
 import { TimelineView } from '../components/notes/TimelineView';
+import { exportNotesAsZip, exportFullBackup, importFullBackup } from '../lib/export';
 
 export function Notes() {
   const {
@@ -75,6 +76,77 @@ export function Notes() {
   const currentFolder = folders?.find(f => f.id === selectedFolderId);
   const currentTag = tags?.find(t => t.id === selectedTagId);
 
+  // 多选/导出状态
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (type: 'success' | 'error', msg: string) => {
+    setToast({ type, msg });
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    setShowExportMenu(false);
+  };
+
+  const handleBatchExport = async () => {
+    if (selectedIds.size === 0) return;
+    setExportBusy(true);
+    try {
+      const notesToExport = (notes || []).filter(n => selectedIds.has(n.id));
+      await exportNotesAsZip(notesToExport);
+      showToast('success', `已导出 ${notesToExport.length} 条笔记`);
+      exitSelectMode();
+    } catch (e) {
+      console.error(e);
+      showToast('error', '导出失败');
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const handleFullBackup = async () => {
+    setExportBusy(true);
+    try {
+      await exportFullBackup();
+      showToast('success', '整库备份已开始下载');
+    } catch (e) {
+      console.error(e);
+      showToast('error', '备份失败');
+    } finally {
+      setExportBusy(false);
+      setShowExportMenu(false);
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    setExportBusy(true);
+    try {
+      const result = await importFullBackup(file, { merge: false });
+      showToast('success', `恢复完成：笔记 ${result.notes}、文件夹 ${result.folders}、标签 ${result.tags}`);
+    } catch (e) {
+      console.error(e);
+      showToast('error', e instanceof Error ? e.message : '恢复失败');
+    } finally {
+      setExportBusy(false);
+      setShowExportMenu(false);
+    }
+  };
+
   // 检测是否选择了未连接的网盘文件夹
   const isCloudFolder = selectedFolderId?.startsWith('folder-cloud-');
   const cloudProvider = isCloudFolder ? selectedFolderId!.replace('folder-cloud-', '') : null;
@@ -116,26 +188,130 @@ export function Notes() {
       <div className="flex items-center justify-between mb-6 pt-14 md:pt-0">
         <div>
           <h1 className="typo-title">{getTitle()}</h1>
-          <p className="typo-meta mt-1">{notes?.length || 0} 条笔记</p>
+          <p className="typo-meta mt-1">{selectMode ? `已选 ${selectedIds.size} / ${notes?.length || 0}` : `${notes?.length || 0} 条笔记`}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 4 种视图切换 — ios-glass-btn 质感 */}
-          <div className="flex items-center gap-1 ios-glass-btn rounded-xl p-1">
-            {viewModes.map(({ mode, icon: Icon }) => (
+          {/* 多选模式工具栏 */}
+          {selectMode ? (
+            <>
               <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-                  settings.viewMode === mode
-                    ? 'bg-[var(--accent-mint)]/20 text-[var(--accent-mint)]'
-                    : 'text-[var(--text-secondary)] hover:bg-white/5'
-                }`}
-                title={mode}
+                onClick={() => {
+                  if (notes && selectedIds.size === notes.length) {
+                    setSelectedIds(new Set());
+                  } else {
+                    setSelectedIds(new Set((notes || []).map(n => n.id)));
+                  }
+                }}
+                className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                title="全选/取消全选"
               >
-                <Icon size={16} />
+                <CheckSquare size={15} /> 全选
               </button>
-            ))}
-          </div>
+              <button
+                onClick={handleBatchExport}
+                disabled={selectedIds.size === 0 || exportBusy}
+                className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm disabled:opacity-40 transition-colors"
+                style={{ color: selectedIds.size > 0 ? 'var(--accent-mint)' : 'var(--text-secondary)' }}
+                title="批量导出所选笔记"
+              >
+                <FileDown size={15} /> 导出
+              </button>
+              <button
+                onClick={exitSelectMode}
+                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                title="退出多选"
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              {/* 多选/导入按钮 */}
+              <button
+                onClick={() => setSelectMode(true)}
+                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                title="多选"
+              >
+                <Square size={18} />
+              </button>
+              {/* 导出菜单 */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  title="导出 / 备份"
+                >
+                  <Download size={18} />
+                </button>
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-1.5 min-w-[200px] space-y-0.5"
+                      >
+                        <button
+                          onClick={() => {
+                            setShowExportMenu(false);
+                            handleFullBackup();
+                          }}
+                          disabled={exportBusy}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                        >
+                          <Database size={15} className="text-[var(--accent-mint)]" /> 整库备份
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowExportMenu(false);
+                            importInputRef.current?.click();
+                          }}
+                          disabled={exportBusy}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                        >
+                          <Upload size={15} className="text-[var(--accent-ocean)]" /> 从备份恢复
+                        </button>
+                        <p className="typo-meta px-3 py-1" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
+                          备份包含全部笔记、文件夹、标签和云账户
+                        </p>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleImportFile(f);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
+              {/* 4 种视图切换 — ios-glass-btn 质感 */}
+              <div className="flex items-center gap-1 ios-glass-btn rounded-xl p-1">
+                {viewModes.map(({ mode, icon: Icon }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                      settings.viewMode === mode
+                        ? 'bg-[var(--accent-mint)]/20 text-[var(--accent-mint)]'
+                        : 'text-[var(--text-secondary)] hover:bg-white/5'
+                    }`}
+                    title={mode}
+                  >
+                    <Icon size={16} />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -159,7 +335,9 @@ export function Notes() {
                   note={note}
                   tags={tags || []}
                   folderName={folders?.find(f => f.id === note.folderId)?.name}
-                  onClick={() => handleNoteClick(note.id)}
+                  onClick={() => selectMode ? toggleSelect(note.id) : handleNoteClick(note.id)}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(note.id)}
                 />
               ))}
             </div>
@@ -174,8 +352,10 @@ export function Notes() {
                   note={note}
                   tags={tags || []}
                   folderName={folders?.find(f => f.id === note.folderId)?.name}
-                  onClick={() => handleNoteClick(note.id)}
+                  onClick={() => selectMode ? toggleSelect(note.id) : handleNoteClick(note.id)}
                   index={i}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(note.id)}
                 />
               ))}
             </div>
@@ -253,6 +433,29 @@ export function Notes() {
           </button>
         </motion.div>
       )}
+
+      {/* Toast 提示 */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div
+              className="glass-strong rounded-2xl px-4 py-2.5 text-sm shadow-lg flex items-center gap-2"
+              style={{
+                color: toast.type === 'success' ? 'var(--accent-mint)' : '#f87171',
+              }}
+            >
+              {toast.type === 'success' ? <CheckSquare size={15} /> : <X size={15} />}
+              {toast.msg}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Pin, Lock } from 'lucide-react';
+import { Pin, Lock, CheckSquare, Square } from 'lucide-react';
 import type { Note, Tag } from '../../types';
 import { getDisplayTitle } from '../../lib/note-utils';
 import { HighlightText } from '../HighlightText';
@@ -10,9 +10,11 @@ interface NoteListItemProps {
   tags: Tag[];
   folderName?: string;
   onClick: () => void;
+  selectMode?: boolean;
+  selected?: boolean;
 }
 
-export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemProps) {
+export function NoteListItem({ note, tags, folderName, onClick, selectMode, selected }: NoteListItemProps) {
   const { searchQuery } = useStore();
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
   const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
@@ -29,12 +31,18 @@ export function NoteListItem({ note, tags, folderName, onClick }: NoteListItemPr
       onClick={onClick}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-      className="ios-pill-note w-full text-left flex items-center gap-3 px-4 py-2.5"
+      className={`ios-pill-note w-full text-left flex items-center gap-3 px-4 py-2.5 ${selected ? 'ring-1 ring-[var(--accent-mint)] bg-[var(--accent-mint)]/5' : ''}`}
     >
-      {/* 左侧：置顶/锁定标记 */}
+      {/* 左侧：多选框 / 置顶锁定标记 */}
       <div className="flex flex-col items-center gap-1.5 shrink-0 w-5">
-        {note.isPinned && <Pin size={13} className="text-[var(--accent-mint)] fill-current" />}
-        {note.isLocked && <Lock size={13} className="text-[var(--accent-ocean)]" />}
+        {selectMode ? (
+          selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current" /> : <Square size={16} className="text-[var(--text-secondary)]" />
+        ) : (
+          <>
+            {note.isPinned && <Pin size={13} className="text-[var(--accent-mint)] fill-current" />}
+            {note.isLocked && <Lock size={13} className="text-[var(--accent-ocean)]" />}
+          </>
+        )}
       </div>
 
       {/* 中间：标题 + 摘要 */}

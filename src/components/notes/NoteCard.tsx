@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
-import { Pin, Lock, Paperclip } from 'lucide-react';
+import { Pin, Lock, Paperclip, CheckSquare, Square } from 'lucide-react';
 import type { Note, Tag } from '../../types';
 import { getDisplayTitle } from '../../lib/note-utils';
 
@@ -10,9 +10,11 @@ interface NoteCardProps {
   folderName?: string;
   onClick: () => void;
   index?: number;
+  selectMode?: boolean;
+  selected?: boolean;
 }
 
-export function NoteCard({ note, tags, folderName, onClick, index = 0 }: NoteCardProps) {
+export function NoteCard({ note, tags, folderName, onClick, index = 0, selectMode, selected }: NoteCardProps) {
   const noteTags = tags.filter(t => note.tagIds.includes(t.id));
   const rawPreview = note.plainText || note.content.replace(/[#*`>\-|]/g, '').trim();
   // 空内容时显示文件夹名或占位文字
@@ -47,10 +49,16 @@ export function NoteCard({ note, tags, folderName, onClick, index = 0 }: NoteCar
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, delay: index * 0.04, ease: [0.4, 0, 0.2, 1] }}
       onClick={onClick}
-      className="cursor-pointer group flex flex-col"
+      className={`cursor-pointer group flex flex-col ${selected ? 'note-grid-card-selected' : ''}`}
     >
       {/* 预览卡片 — 内部只显示内容 */}
-      <div className="note-grid-card-inner">
+      <div className="note-grid-card-inner relative">
+        {/* 多选状态角标 */}
+        {selectMode && (
+          <div className="absolute top-1.5 right-1.5 z-10">
+            {selected ? <CheckSquare size={16} className="text-[var(--accent-mint)] fill-current" /> : <Square size={16} className="text-[var(--text-secondary)]" />}
+          </div>
+        )}
         {/* 顶部状态图标 — 极淡 */}
         <div className="flex items-center gap-1 mb-1.5 opacity-60">
           {note.isPinned && <Pin size={10} className="text-[var(--accent-mint)] fill-current shrink-0" />}

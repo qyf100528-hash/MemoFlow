@@ -275,6 +275,13 @@ textarea:focus, input:focus { outline: none; }
 .markdown-body img { max-width: 100%; border-radius: var(--radius-md); margin: 0.5rem 0; }
 .markdown-image { display: block; max-width: 100%; height: auto; border-radius: var(--radius-md); margin: 0.5rem 0; cursor: pointer; transition: transform 0.2s; }
 .markdown-image:hover { transform: scale(1.01); }
+
+/* ============ 多选状态样式 ============ */
+.note-grid-card-selected .note-grid-card-inner {
+  outline: 1.5px solid var(--accent-mint);
+  outline-offset: -1px;
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.06), rgba(45, 212, 191, 0.02));
+}
 .markdown-body hr { border: none; border-top: 1px solid var(--glass-border); margin: 1.5rem 0; }
 
 /* ============ 代码高亮 - highlight.js 自定义主题 (One Dark 风格) ============ */

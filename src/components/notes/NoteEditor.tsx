@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import { Pin, Lock, Unlock, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText, Cloud, FolderInput, Loader2, Share2, Bold, Italic, Heading1, List, Code2, Quote, Eye } from 'lucide-react';
+import { Pin, Lock, Unlock, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText, Cloud, FolderInput, Loader2, Share2, Bold, Italic, Heading1, List, Code2, Quote, Eye, Download } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useStore } from '../../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -16,6 +16,7 @@ import { AIPanel } from './AIPanel';
 import { BacklinksPanel } from './BacklinksPanel';
 import { TemplatePicker } from './TemplatePicker';
 import { getLinkSuggestions } from '../../lib/links/link-parser';
+import { exportNoteAsMarkdown } from '../../lib/export';
 import type { Note as NoteType } from '../../types';
 
 export function NoteEditor() {
@@ -474,6 +475,16 @@ export function NoteEditor() {
     }
   };
 
+  const handleExport = async () => {
+    if (!note) return;
+    try {
+      await exportNoteAsMarkdown(note);
+    } catch (e) {
+      console.error('导出失败:', e);
+      alert('导出失败');
+    }
+  };
+
   const handleLockToggle = async () => {
     if (!note) return;
     if (note.isLocked) {
@@ -590,6 +601,9 @@ export function NoteEditor() {
             <button onClick={() => handleChange('isPinned', !note.isPinned)} className={`icon-press hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isPinned ? 'text-[var(--accent-mint)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
               <Pin size={18} className={note.isPinned ? 'fill-current' : ''} />
             </button>
+            <button onClick={handleExport} className="icon-press hidden sm:flex w-9 h-9 rounded-xl items-center justify-center text-[var(--text-secondary)] hover:text-[var(--accent-mint)] transition-colors shrink-0" title="导出为 Markdown">
+              <Download size={18} />
+            </button>
             <button onClick={handleLockToggle} className={`icon-press hidden sm:flex w-9 h-9 rounded-xl items-center justify-center transition-colors shrink-0 ${note.isLocked ? 'text-[var(--accent-ocean)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
               {note.isLocked ? <Lock size={18} /> : <Unlock size={18} />}
             </button>
@@ -667,9 +681,12 @@ export function NoteEditor() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
               <div className="absolute top-11 right-0 glass-strong rounded-xl p-2 min-w-[180px] z-50 space-y-0.5 max-h-[calc(100vh-100px)] overflow-y-auto overscroll-contain">
-                {/* 分享 */}
+                {/* 分享 / 导出 */}
                 <button onClick={() => { handleShare(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
                   <Share2 size={16} /> 分享
+                </button>
+                <button onClick={() => { handleExport(); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
+                  <Download size={16} /> 导出 Markdown
                 </button>
                 {/* 快速状态：置顶 / 锁定 */}
                 <button onClick={() => { handleChange('isPinned', !note.isPinned); setShowMoreMenu(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]">
