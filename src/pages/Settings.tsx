@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor, Wand2, ArrowUp, ArrowDown, LayoutGrid } from 'lucide-react';
+import { Sun, Moon, Grid, List, Kanban, Clock, Save, Type, Eye, SpellCheck, Database, Info, Palette, Check, Sparkles, CheckCircle2, Brain, FileText, Plus, Trash2, Monitor, Wand2, ArrowUp, ArrowDown, LayoutGrid, Keyboard } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { db } from '../lib/db';
 import { createTemplate, deleteTemplate } from '../lib/templates';
@@ -362,6 +362,26 @@ export function Settings() {
               value={settings.spellCheck}
               onChange={(v) => updateSettings({ spellCheck: v })}
             />
+          </div>
+
+          {/* 键盘快捷键说明 */}
+          <div className="mt-4 pt-4" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
+            <h3 className="typo-label mb-3 flex items-center gap-2"><Keyboard size={15} /> 键盘快捷键</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              {[
+                ['⌘ / Ctrl + B', '加粗选中文本'],
+                ['⌘ / Ctrl + I', '斜体选中文本'],
+                ['⌘ / Ctrl + K', '插入笔记链接'],
+                ['⌘ / Ctrl + E', '插入代码块'],
+                ['⌘ / Ctrl + Enter', '保存当前笔记'],
+                ['Esc', '退出编辑（自动保存）'],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between gap-2 typo-meta">
+                  <span className="text-[var(--text-primary)]">{desc}</span>
+                  <kbd className="px-2 py-0.5 rounded-md glass text-xs font-mono shrink-0">{key}</kbd>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

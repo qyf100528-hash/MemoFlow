@@ -225,6 +225,88 @@ export function NoteEditor() {
     handleChange('content', value);
   };
 
+  // 键盘快捷键: Esc 退出编辑、Cmd/Ctrl+Enter 保存、Cmd/Ctrl+B 加粗、Cmd/Ctrl+I 斜体
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape' && isEditing) {
+      e.preventDefault();
+      handleBack();
+      return;
+    }
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSave();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'b') {
+        e.preventDefault();
+        wrapSelection('**');
+        return;
+      }
+      if (key === 'i') {
+        e.preventDefault();
+        wrapSelection('*');
+        return;
+      }
+      if (key === 'k') {
+        e.preventDefault();
+        insertWikilink();
+        return;
+      }
+      if (key === 'e') {
+        e.preventDefault();
+        insertCodeBlock();
+        return;
+      }
+    }
+  };
+
+  // 图片粘贴：自动转 data URL 写入内容，并保存附件元数据
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file || !note) continue;
+        try {
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error('读取失败'));
+            reader.readAsDataURL(file);
+          });
+          const attachmentId = `att-${Date.now()}-${i}`;
+          const newAttachment: Attachment = {
+            id: attachmentId,
+            noteId: note.id,
+            type: 'image',
+            filename: `粘贴图片-${Date.now()}.${file.type.split('/')[1] || 'png'}`,
+            mimeType: file.type,
+            size: file.size,
+            url: dataUrl,
+          };
+          const textarea = bodyRef.current;
+          const start = textarea?.selectionStart ?? note.content.length;
+          const end = textarea?.selectionEnd ?? start;
+          const markdown = `\n![${newAttachment.filename}](attachment:${attachmentId})\n`;
+          const newContent = note.content.slice(0, start) + markdown + note.content.slice(end);
+          setNote({
+            ...note,
+            content: newContent,
+            attachments: [...(note.attachments || []), newAttachment],
+          });
+        } catch (err) {
+          console.error('图片粘贴失败:', err);
+        }
+        return;
+      }
+    }
+  };
+
   const [linkQuery, setLinkQuery] = useState('');
 
   const insertLink = (targetTitle: string) => {
@@ -350,6 +432,17 @@ export function NoteEditor() {
         );
       }
       return <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-mint)] underline">{children}</a>;
+    },
+    img: ({ src, alt }: { src?: string; alt?: string }) => {
+      if (src?.startsWith('attachment:')) {
+        const attachmentId = src.replace('attachment:', '');
+        const attachment = note?.attachments?.find(a => a.id === attachmentId);
+        if (attachment?.url) {
+          return <img src={attachment.url} alt={alt || attachment.filename} loading="lazy" className="markdown-image" />;
+        }
+        return <span className="typo-meta text-[var(--text-secondary)]">[图片已丢失]</span>;
+      }
+      return <img src={src} alt={alt} loading="lazy" className="markdown-image" />;
     },
   };
 
@@ -896,10 +989,12 @@ export function NoteEditor() {
                       ref={bodyRef}
                       value={note.content}
                       onChange={handleContentInput}
+                      onKeyDown={handleKeyDown}
+                      onPaste={handlePaste}
                       className="w-full min-h-[500px] bg-transparent resize-none outline-none text-[var(--text-primary)] leading-relaxed"
                       style={{ fontSize: 'var(--font-size-base, 16px)' }}
                       disabled={isLocked}
-                      placeholder="开始记录… 支持 Markdown 语法"
+                      placeholder="开始记录… 支持 Markdown 语法  ·  ⌘/Ctrl+B 加粗 · ⌘/Ctrl+I 斜体 · ⌘/Ctrl+K 笔记链接 · ⌘/Ctrl+E 代码块 · ⌘/Ctrl+Enter 保存  ·  可直接粘贴图片"
                     />
                   </>
                 )}

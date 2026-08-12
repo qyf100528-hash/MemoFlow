@@ -38,12 +38,12 @@ export function Notes() {
       result = result.filter(n => n.tagIds.includes(selectedTagId));
     }
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(n =>
-        n.title.toLowerCase().includes(q) ||
-        n.plainText.toLowerCase().includes(q) ||
-        n.content.toLowerCase().includes(q)
-      );
+      // 多关键词 AND 匹配：所有 token 都必须出现在笔记中
+      const tokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+      result = result.filter(n => {
+        const haystack = `${n.title} ${n.plainText} ${n.content}`.toLowerCase();
+        return tokens.every(t => haystack.includes(t));
+      });
     }
 
     return result;
