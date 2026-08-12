@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, Square, Download, X, FileDown, FolderDown, Database, Upload, Tag as TagIcon, Folder as FolderIcon, Trash2 } from 'lucide-react';
+import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, X, Database, Tag as TagIcon, Folder as FolderIcon, Trash2, MoreHorizontal, FileDown } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -274,7 +274,7 @@ export function Notes() {
               </button>
               <button
                 onClick={exitSelectMode}
-                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
                 title="退出多选"
               >
                 <X size={18} />
@@ -282,22 +282,14 @@ export function Notes() {
             </>
           )}
             <>
-              {/* 多选/导入按钮 */}
-              <button
-                onClick={() => setSelectMode(true)}
-                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                title="多选"
-              >
-                <Square size={18} />
-              </button>
-              {/* 导出菜单 */}
+              {/* 右上角三点菜单 — 仅保留备份/恢复与多选，与编辑界面风格一致 */}
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  title="导出 / 备份"
+                  className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
+                  title="更多"
                 >
-                  <Download size={18} />
+                  <MoreHorizontal size={18} />
                 </button>
                 <AnimatePresence>
                   {showExportMenu && (
@@ -308,7 +300,7 @@ export function Notes() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-1.5 min-w-[200px] space-y-0.5"
+                        className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-2 min-w-[160px] space-y-0.5"
                       >
                         <button
                           onClick={() => {
@@ -316,23 +308,20 @@ export function Notes() {
                             handleFullBackup();
                           }}
                           disabled={exportBusy}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
                         >
-                          <Database size={15} className="text-[var(--accent-mint)]" /> 整库备份
+                          <Database size={16} className="text-[var(--accent-mint)]" /> 备份
                         </button>
                         <button
                           onClick={() => {
                             setShowExportMenu(false);
-                            importInputRef.current?.click();
+                            setSelectMode(true);
                           }}
-                          disabled={exportBusy}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                          disabled={(notes?.length || 0) === 0}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
                         >
-                          <Upload size={15} className="text-[var(--accent-ocean)]" /> 从备份恢复
+                          <CheckSquare size={16} className="text-[var(--accent-violet)]" /> 多选
                         </button>
-                        <p className="typo-meta px-3 py-1" style={{ borderTop: '0.5px solid var(--glass-border)' }}>
-                          备份包含全部笔记、文件夹、标签和云账户
-                        </p>
                       </motion.div>
                     </>
                   )}
@@ -349,8 +338,8 @@ export function Notes() {
                   }}
                 />
               </div>
-              {/* 4 种视图切换 — ios-glass-btn 质感 */}
-              <div className="flex items-center gap-1 ios-glass-btn rounded-xl p-1">
+              {/* 4 种视图切换 — 仅桌面端显示，移动端由三点菜单统一管理 */}
+              <div className="hidden sm:flex items-center gap-1 ios-glass-btn rounded-xl p-1">
                 {viewModes.map(({ mode, icon: Icon }) => (
                   <button
                     key={mode}
