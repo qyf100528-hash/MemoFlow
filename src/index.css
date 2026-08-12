@@ -272,6 +272,25 @@ textarea:focus, input:focus { outline: none; }
 .markdown-body a { color: var(--accent-mint); text-decoration: none; }
 .markdown-body table { border-collapse: collapse; margin: 0.8rem 0; width: 100%; }
 .markdown-body th, .markdown-body td { border: 1px solid var(--glass-border); padding: 8px 12px; text-align: left; }
+.markdown-body img { max-width: 100%; border-radius: var(--radius-md); margin: 0.5rem 0; }
+.markdown-body hr { border: none; border-top: 1px solid var(--glass-border); margin: 1.5rem 0; }
+
+/* ============ 代码高亮 - highlight.js 自定义主题 (One Dark 风格) ============ */
+.markdown-body pre code.hljs { display: block; padding: 0; background: transparent; }
+.markdown-body code.hljs { display: inline; padding: 0; }
+.hljs-keyword, .hljs-selector-tag, .hljs-tag { color: #c678dd; }
+.hljs-string, .hljs-attr, .hljs-template-tag, .hljs-addition { color: #98c379; }
+.hljs-number, .hljs-literal, .hljs-bullet { color: #d19a66; }
+.hljs-comment, .hljs-quote { color: #7f848e; font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-section, .hljs-name { color: #61afef; }
+.hljs-variable, .hljs-params, .hljs-template-variable { color: #e06c75; }
+.hljs-type, .hljs-built_in, .hljs-class .hljs-title { color: #56b6c2; }
+.hljs-property, .hljs-attribute { color: #d19a66; }
+.hljs-regexp { color: #98c379; }
+.hljs-meta, .hljs-symbol { color: #7f848e; }
+.hljs-deletion { color: #e06c75; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }
 
 /* ============ 字体大小全局变量 — 由 settings.fontSize 控制 ============ */
 :root { --font-size-base: 16px; }

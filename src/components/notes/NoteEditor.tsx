@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Pin, Lock, Unlock, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText, Cloud, FolderInput, Loader2, Share2 } from 'lucide-react';
+import rehypeHighlight from 'rehype-highlight';
+import { Pin, Lock, Unlock, Edit3, Sparkles, Tag as TagIcon, Folder as FolderIcon, Check, ArrowLeft, Trash2, History, Link2, MoreHorizontal, FileText, Cloud, FolderInput, Loader2, Share2, Bold, Italic, Heading1, List, Code2, Quote, Eye } from 'lucide-react';
 import { db } from '../../lib/db';
 import { useStore } from '../../store/useStore';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -45,6 +46,7 @@ export function NoteEditor() {
   const [showDate, setShowDate] = useState(false);
   // 保存勾非常驻：编辑模式下用户点击屏幕后才从三点滑出
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [previewMode, setPreviewMode] = useState(false);
   // 顶部工具栏毛玻璃：默认透明（true），滚动时显示（false），与主页同逻辑
   const [toolbarHidden, setToolbarHidden] = useState(true);
   const lastScrollYRef = useRef(0);
@@ -181,6 +183,7 @@ export function NoteEditor() {
       addRecentItem(n.id, title, 'note');
       setIsEditing(false);
       setHasInteracted(false);
+      setPreviewMode(false);
     } finally {
       setIsSaving(false);
     }
@@ -192,6 +195,7 @@ export function NoteEditor() {
     originalNoteRef.current = { ...note };
     setIsEditing(true);
     setHasInteracted(true);
+    setPreviewMode(false);
   };
 
   // 修改 note 字段（仅编辑模式下使用）
@@ -248,6 +252,105 @@ export function NoteEditor() {
       const noteId = target.getAttribute('data-note-id');
       if (noteId) setSelectedNoteId(noteId);
     }
+  };
+
+  // ── Markdown 格式化工具 ──────────────────────────
+  const wrapSelection = (before: string, after: string = before) => {
+    const textarea = bodyRef.current;
+    if (!textarea || !note) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = note.content.slice(start, end);
+    const newContent = note.content.slice(0, start) + before + selected + after + note.content.slice(end);
+    handleChange('content', newContent);
+    setTimeout(() => {
+      textarea.focus();
+      if (selected) {
+        textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
+      } else {
+        const pos = start + before.length;
+        textarea.setSelectionRange(pos, pos);
+      }
+    }, 0);
+  };
+
+  const insertLinePrefix = (prefix: string) => {
+    const textarea = bodyRef.current;
+    if (!textarea || !note) return;
+    const start = textarea.selectionStart;
+    const before = note.content.slice(0, start);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const newContent = note.content.slice(0, lineStart) + prefix + note.content.slice(lineStart);
+    handleChange('content', newContent);
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + prefix.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  const insertCodeBlock = () => {
+    const textarea = bodyRef.current;
+    if (!textarea || !note) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = note.content.slice(start, end);
+    const block = `\n\`\`\`\n${selected || '代码'}\n\`\`\`\n`;
+    const newContent = note.content.slice(0, start) + block + note.content.slice(end);
+    handleChange('content', newContent);
+    setTimeout(() => {
+      textarea.focus();
+      const newPos = start + block.length;
+      textarea.setSelectionRange(newPos, newPos);
+    }, 0);
+  };
+
+  const insertWikilink = () => {
+    const textarea = bodyRef.current;
+    if (!textarea || !note) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = note.content.slice(start, end);
+    const insert = selected ? `[[${selected}]]` : '[[]]';
+    const newContent = note.content.slice(0, start) + insert + note.content.slice(end);
+    handleChange('content', newContent);
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + (selected ? insert.length : 2);
+      textarea.setSelectionRange(pos, pos);
+      if (!selected) {
+        setShowLinkSuggest(true);
+        getLinkSuggestions('', note?.id).then(setLinkSuggestions);
+      }
+    }, 0);
+  };
+
+  // 将 [[标题]] 预处理为标准 Markdown 链接，便于 ReactMarkdown 渲染
+  const preprocessContent = (content: string): string => {
+    return content.replace(/\[\[([^\]]+)\]\]/g, (_, title) => `[${title}](#wikilink:${encodeURIComponent(title)})`);
+  };
+
+  const markdownComponents = {
+    a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+      if (href?.startsWith('#wikilink:')) {
+        return (
+          <a
+            href={href}
+            className="text-[var(--accent-mint)] underline cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              const title = decodeURIComponent(href.replace('#wikilink:', ''));
+              db.notes.filter(n => n.title === title && !n.isArchived).first().then(n => {
+                if (n) setSelectedNoteId(n.id);
+              });
+            }}
+          >
+            {children}
+          </a>
+        );
+      }
+      return <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--accent-mint)] underline">{children}</a>;
+    },
   };
 
   const handleDelete = async () => {
@@ -517,6 +620,18 @@ export function NoteEditor() {
           )}
         </div>
 
+        {/* 编辑/预览切换 - 仅编辑模式显示 */}
+        {isEditing && (
+          <button
+            onClick={() => setPreviewMode(!previewMode)}
+            className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+            style={{ color: previewMode ? 'var(--accent-mint)' : 'var(--text-secondary)' }}
+            title={previewMode ? '编辑' : '预览'}
+          >
+            {previewMode ? <Edit3 size={18} /> : <Eye size={18} />}
+          </button>
+        )}
+
         {/* 右上角：编辑按钮（常驻）/ ✓保存按钮（点击屏幕后从三点滑出） */}
         <AnimatePresence mode="wait">
           {isEditing ? (
@@ -742,28 +857,70 @@ export function NoteEditor() {
                     ))}
                   </div>
                 )}
-                <textarea
-                  ref={bodyRef}
-                  value={note.content}
-                  onChange={handleContentInput}
-                  className="w-full min-h-[500px] bg-transparent resize-none outline-none text-[var(--text-primary)] leading-relaxed"
-                  style={{ fontSize: 'var(--font-size-base, 16px)' }}
-                  disabled={isLocked}
-                  placeholder="开始记录…"
-                />
+                {previewMode ? (
+                  /* 编辑模式下的预览 */
+                  <div className="markdown-body" style={{ fontSize: 'var(--font-size-base, 16px)', minHeight: '300px' }}>
+                    {note.content ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={markdownComponents}>
+                        {preprocessContent(note.content)}
+                      </ReactMarkdown>
+                    ) : (
+                      <p className="text-[var(--text-secondary)]">暂无内容可预览</p>
+                    )}
+                  </div>
+                ) : (
+                  /* 编辑模式 - textarea + 格式工具栏 */
+                  <>
+                    {/* Markdown 格式工具栏 */}
+                    <div className="flex items-center gap-0.5 mb-3 glass rounded-xl p-1 overflow-x-auto shrink-0" style={{ scrollbarWidth: 'none' }}>
+                      {([
+                        { icon: Bold, action: () => wrapSelection('**'), title: '加粗' },
+                        { icon: Italic, action: () => wrapSelection('*'), title: '斜体' },
+                        { icon: Heading1, action: () => insertLinePrefix('# '), title: '标题' },
+                        { icon: List, action: () => insertLinePrefix('- '), title: '列表' },
+                        { icon: Code2, action: insertCodeBlock, title: '代码块' },
+                        { icon: Quote, action: () => insertLinePrefix('> '), title: '引用' },
+                        { icon: Link2, action: insertWikilink, title: '笔记链接' },
+                      ] as const).map(({ icon: Icon, action, title }) => (
+                        <button
+                          key={title}
+                          onClick={action}
+                          className="icon-press w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[var(--text-secondary)] hover:text-[var(--accent-mint)] hover:bg-white/5 transition-colors"
+                          title={title}
+                        >
+                          <Icon size={15} />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      ref={bodyRef}
+                      value={note.content}
+                      onChange={handleContentInput}
+                      className="w-full min-h-[500px] bg-transparent resize-none outline-none text-[var(--text-primary)] leading-relaxed"
+                      style={{ fontSize: 'var(--font-size-base, 16px)' }}
+                      disabled={isLocked}
+                      placeholder="开始记录… 支持 Markdown 语法"
+                    />
+                  </>
+                )}
               </motion.div>
             ) : (
-              <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="text-[var(--text-primary)] leading-relaxed" onPointerDown={() => { if (!isEditing && note) { originalNoteRef.current = { ...note }; setIsEditing(true); setHasInteracted(true); } }} id="markdown-preview">
+              <motion.div key="read" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="text-[var(--text-primary)] leading-relaxed" onPointerDown={(e) => { const t = e.target as HTMLElement; if (t.tagName === 'A' || t.closest('a')) return; if (!isEditing && note) { originalNoteRef.current = { ...note }; setIsEditing(true); setHasInteracted(true); } }} id="markdown-preview">
                 {note.title && (
                   <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '0.5rem' }}>{note.title}</h1>
                 )}
                 {note.content && (() => {
-                  // 标题与内容首行相同时跳过首行，避免重复显示
                   let display = note.content;
                   if (note.title && note.content.startsWith(note.title)) {
                     display = note.content.slice(note.title.length).replace(/^\n/, '');
                   }
-                  return display ? <div className="whitespace-pre-wrap" style={{ fontSize: 'var(--font-size-base, 16px)' }}>{display}</div> : null;
+                  return display ? (
+                    <div className="markdown-body" style={{ fontSize: 'var(--font-size-base, 16px)' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={markdownComponents}>
+                        {preprocessContent(display)}
+                      </ReactMarkdown>
+                    </div>
+                  ) : null;
                 })()}
                 {!note.title && !note.content && (
                   <div className="text-center py-20 text-[var(--text-secondary)]">

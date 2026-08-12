@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import { useStore } from './store/useStore';
 import { seedDatabase, cleanupDefaultTags, seedTemplates, cleanupTemplateEmojis } from './lib/db';
 import { tokenRefreshService } from './lib/cloud/token-refresh-service';
+import { syncService } from './lib/cloud/sync-service';
 import { Sidebar } from './components/layout/Sidebar';
 import { TopBar } from './components/layout/TopBar';
 import { Home } from './pages/Home';
@@ -115,7 +116,11 @@ export default function App() {
     cleanupTemplateEmojis();
     seedTemplates();
     tokenRefreshService.start();
-    return () => tokenRefreshService.stop();
+    syncService.start();
+    return () => {
+      tokenRefreshService.stop();
+      syncService.stop();
+    };
   }, []);
 
   // 系统主题自动跟随：当 theme=auto 时监听系统深浅变化
