@@ -297,7 +297,69 @@ export function Notes() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8" style={{ paddingBottom: '100px' }}>
-      {/* 头部 — 标题下移避开返回按钮，与右侧按钮同一行对齐 */}
+      {/* 右上角三点菜单 — 移动端 fixed 定位与左上角返回按钮对齐 */}
+      <div className="fixed right-3 top-3 z-40 md:hidden">
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
+            title="更多"
+          >
+            <MoreHorizontal size={18} />
+          </button>
+          <AnimatePresence>
+            {showExportMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-2 min-w-[160px] space-y-0.5"
+                >
+                  <button
+                    onClick={() => { setShowExportMenu(false); handleFullBackup(); }}
+                    disabled={exportBusy}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                  >
+                    <Database size={16} className="text-[var(--accent-mint)]" /> 备份
+                  </button>
+                  {selectMode ? (
+                    <button
+                      onClick={() => { setShowExportMenu(false); exitSelectMode(); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]"
+                    >
+                      <X size={16} className="text-[var(--text-secondary)]" /> 取消多选
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => { setShowExportMenu(false); setSelectMode(true); }}
+                      disabled={(notes?.length || 0) === 0}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                    >
+                      <CheckSquare size={16} className="text-[var(--accent-violet)]" /> 多选
+                    </button>
+                  )}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleImportFile(f);
+              e.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 头部 — 标题下移避开返回按钮（仅普通模式显示右侧按钮） */}
       <div className="flex items-center justify-between mb-6 pt-14 md:pt-0">
         <div>
           <h1 className="typo-title flex items-center gap-2">
@@ -317,48 +379,9 @@ export function Notes() {
           <p className="typo-meta mt-1">{selectMode ? `已选 ${selectedIds.size} / ${notes?.length || 0}` : `${notes?.length || 0} 条笔记`}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 多选模式工具栏 — 极简顶部：仅全选/反选 + 取消 */}
-          {selectMode && (
+          {selectMode ? (
+            /* 多选模式工具栏 — 全选 + 反选；三点菜单已 fixed 在屏幕右上角 */
             <>
-              {/* 三点菜单 — 始终在最右上角第一位置 */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
-                  title="更多"
-                >
-                  <MoreHorizontal size={18} />
-                </button>
-                <AnimatePresence>
-                  {showExportMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-2 min-w-[160px] space-y-0.5"
-                      >
-                        <button
-                          onClick={() => { setShowExportMenu(false); handleFullBackup(); }}
-                          disabled={exportBusy}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
-                        >
-                          <Database size={16} className="text-[var(--accent-mint)]" /> 备份
-                        </button>
-                        <button
-                          onClick={() => { setShowExportMenu(false); exitSelectMode(); }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]"
-                        >
-                          <X size={16} className="text-[var(--text-secondary)]" /> 取消多选
-                        </button>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
-              </div>
-
               <button
                 onClick={() => {
                   if (notes && selectedIds.size === notes.length) {
@@ -383,10 +406,10 @@ export function Notes() {
                 <ArrowLeftRight size={15} />
               </button>
             </>
-          )}
+          ) : (
+            /* 普通模式 — 桌面端显示三点菜单与视图切换；移动端三点菜单已 fixed 在屏幕右上角 */
             <>
-              {/* 三点菜单 — 最右上角第一位置 */}
-              <div className="relative">
+              <div className="hidden md:block relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
                   className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
@@ -441,7 +464,6 @@ export function Notes() {
                   }}
                 />
               </div>
-              {/* 4 种视图切换 — 仅桌面端显示，移动端由三点菜单统一管理 */}
               <div className="hidden sm:flex items-center gap-1 ios-glass-btn rounded-xl p-1">
                 {viewModes.map(({ mode, icon: Icon }) => (
                   <button
@@ -459,6 +481,7 @@ export function Notes() {
                 ))}
               </div>
             </>
+          )}
         </div>
       </div>
 
