@@ -320,6 +320,45 @@ export function Notes() {
           {/* 多选模式工具栏 — 极简顶部：仅全选/反选 + 取消 */}
           {selectMode && (
             <>
+              {/* 三点菜单 — 始终在最右上角第一位置 */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
+                  title="更多"
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+                <AnimatePresence>
+                  {showExportMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-11 z-50 glass-strong rounded-xl p-2 min-w-[160px] space-y-0.5"
+                      >
+                        <button
+                          onClick={() => { setShowExportMenu(false); handleFullBackup(); }}
+                          disabled={exportBusy}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)] disabled:opacity-50"
+                        >
+                          <Database size={16} className="text-[var(--accent-mint)]" /> 备份
+                        </button>
+                        <button
+                          onClick={() => { setShowExportMenu(false); exitSelectMode(); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm hover:bg-white/5 text-[var(--text-primary)]"
+                        >
+                          <X size={16} className="text-[var(--text-secondary)]" /> 取消多选
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <button
                 onClick={() => {
                   if (notes && selectedIds.size === notes.length) {
@@ -338,22 +377,15 @@ export function Notes() {
               <button
                 onClick={invertSelection}
                 disabled={!notes || notes.length === 0}
-                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0 disabled:opacity-40"
                 title="反选"
               >
                 <ArrowLeftRight size={15} />
               </button>
-              <button
-                onClick={exitSelectMode}
-                className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0"
-                title="退出多选"
-              >
-                <X size={18} />
-              </button>
             </>
           )}
             <>
-              {/* 右上角三点菜单 — 仅保留备份/恢复与多选，与编辑界面风格一致 */}
+              {/* 三点菜单 — 最右上角第一位置 */}
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
