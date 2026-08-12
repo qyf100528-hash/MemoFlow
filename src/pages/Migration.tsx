@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Download, FileText, FileJson, FileCode, FileType, Apple, Check, AlertCircle, RefreshCw, type LucideIcon } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { db } from '../lib/db';
 import type { ImportSource, ExportFormat, Note, ImportResult } from '../types';
 
@@ -78,6 +80,54 @@ export function Migration() {
     setImporting(false);
   };
 
+  // 根据格式生成真正的导出文件（PDF/Word 为真实文档，不再是伪装的文本）
+  const buildExportBlob = async (format: ExportFormat, note: Note): Promise<{ blob: Blob; ext: string; mime: string }> => {
+    switch (format) {
+      case 'markdown':
+        return {
+          blob: new Blob([`# ${note.title}\n\n${note.content}`], { type: 'text/markdown' }),
+          ext: '.md',
+          mime: 'text/markdown',
+        };
+      case 'json':
+        return {
+          blob: new Blob([JSON.stringify(note, null, 2)], { type: 'application/json' }),
+          ext: '.json',
+          mime: 'application/json',
+        };
+      case 'html':
+        return {
+          blob: new Blob([`<!DOCTYPE html><html><body><h1>${note.title}</h1><div>${note.content}</div></body></html>`], { type: 'text/html' }),
+          ext: '.html',
+          mime: 'text/html',
+        };
+      case 'pdf': {
+        const pdf = new jsPDF();
+        pdf.setFontSize(18);
+        pdf.text(note.title || '无标题', 20, 20);
+        pdf.setFontSize(12);
+        const lines = pdf.splitTextToSize(note.content || '', 170);
+        let y = 32;
+        for (const line of lines) {
+          if (y > 280) { pdf.addPage(); y = 20; }
+          pdf.text(line, 20, y);
+          y += 6;
+        }
+        return { blob: pdf.output('blob'), ext: '.pdf', mime: 'application/pdf' };
+      }
+      case 'word': {
+        // 把标题和内容拆成段落，内容行保留 markdown 原文
+        const paragraphs = [
+          new Paragraph({ children: [new TextRun({ text: note.title || '无标题', bold: true, size: 32 })], heading: HeadingLevel.TITLE, spacing: { after: 200 } }),
+          ...note.content.split('\n').filter(l => l.trim().length > 0).map(l => new Paragraph({ text: l, spacing: { after: 60 } })),
+        ];
+        const doc = new Document({ sections: [{ children: paragraphs }] });
+        const blob = await Packer.toBlob(doc);
+        return { blob, ext: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' };
+      }
+    }
+  };
+
   const createNote = (title: string, content: string, folderId: string): Note => ({
     id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     title,
@@ -102,42 +152,18 @@ export function Migration() {
       : notes || [];
 
     for (const note of notesToExport) {
-      let content = '';
-      let mime = 'text/plain';
-      let ext = '.txt';
-
-      switch (exportFormat) {
-        case 'markdown':
-          content = `# ${note.title}\n\n${note.content}`;
-          mime = 'text/markdown';
-          ext = '.md';
-          break;
-        case 'json':
-          content = JSON.stringify(note, null, 2);
-          mime = 'application/json';
-          ext = '.json';
-          break;
-        case 'pdf':
-        case 'word':
-          content = `${note.title}\n\n${note.content}`;
-          mime = 'text/plain';
-          ext = exportFormat === 'pdf' ? '.pdf' : '.docx';
-          break;
-        case 'html':
-          content = `<!DOCTYPE html><html><body><h1>${note.title}</h1><div>${note.content}</div></body></html>`;
-          mime = 'text/html';
-          ext = '.html';
-          break;
+      try {
+        const { blob, ext } = await buildExportBlob(exportFormat, note);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${note.title || 'note'}${ext}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        await new Promise(r => setTimeout(r, 200));
+      } catch (e) {
+        console.error('导出失败', note.title, e);
       }
-
-      const blob = new Blob([content], { type: mime });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${note.title || 'note'}${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      await new Promise(r => setTimeout(r, 200));
     }
 
     setExporting(false);

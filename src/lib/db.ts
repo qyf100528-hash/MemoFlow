@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import type { Note, NoteVersion, Folder, Tag, Attachment, CloudAccount, SyncLog, NoteTemplate } from '../types';
+import type { Note, NoteVersion, Folder, Tag, Attachment, CloudAccount, SyncLog, SyncQueueItem, NoteTemplate } from '../types';
+import { encryptSecret, decryptSecret, isEncryptedField } from './crypto/secure-store';
 
 export class MemoFlowDB extends Dexie {
   notes!: Table<Note, string>;
@@ -9,6 +10,7 @@ export class MemoFlowDB extends Dexie {
   attachments!: Table<Attachment, string>;
   cloudAccounts!: Table<CloudAccount, string>;
   syncLogs!: Table<SyncLog, string>;
+  syncQueue!: Table<SyncQueueItem, string>;
   templates!: Table<NoteTemplate, string>;
 
   constructor() {
@@ -26,10 +28,70 @@ export class MemoFlowDB extends Dexie {
       syncLogs: 'id, noteId, provider, timestamp',
       templates: 'id, category, isBuiltIn, createdAt',
     });
+    // version 6: 新增云同步失败重试队列表
+    this.version(6).stores({
+      syncQueue: 'id, accountId, provider, nextRetryAt',
+    });
+    // version 7: 补齐常用过滤/排序索引，避免全表扫描
+    this.version(7).stores({
+      notes: 'id, folderId, isPinned, isArchived, createdAt, updatedAt, syncStatus, isEncrypted, isLocked, *tagIds',
+      noteVersions: 'id, noteId, createdAt, [noteId+version]',
+      folders: 'id, parentId, sortOrder',
+      tags: 'id, name',
+      attachments: 'id, noteId, type',
+      cloudAccounts: 'id, provider, expiresAt',
+      syncLogs: 'id, noteId, provider, timestamp',
+      syncQueue: 'id, accountId, provider, nextRetryAt',
+      templates: 'id, category, isBuiltIn, createdAt',
+    });
   }
 }
 
 export const db = new MemoFlowDB();
+
+// ─── 敏感凭据透明加解密 ─────────────────────────────
+// 在写入/更新 cloudAccounts 时自动加密 accessToken / refreshToken，
+// 读取时自动解密。各适配器与 token-manager 仍以明文使用，磁盘上仅存密文。
+const ENCRYPTABLE_FIELDS = ['accessToken', 'refreshToken'] as const;
+
+db.cloudAccounts.hook('creating', (_, obj) => {
+  // 返回 Promise，Dexie 会在写入前等待加密完成
+  const record = obj as unknown as Record<string, unknown>;
+  return Promise.all(
+    ENCRYPTABLE_FIELDS.map(async (field) => {
+      const val = record[field];
+      if (typeof val === 'string' && val.length > 0) {
+        record[field] = await encryptSecret(val);
+      }
+    })
+  );
+});
+
+db.cloudAccounts.hook('updating', (modifications) => {
+  // modifications 是待更新的字段集合，逐个加密
+  const record = modifications as unknown as Record<string, unknown>;
+  return Promise.all(
+    ENCRYPTABLE_FIELDS.map(async (field) => {
+      const val = record[field];
+      if (typeof val === 'string' && val.length > 0) {
+        record[field] = await encryptSecret(val);
+      }
+    })
+  );
+});
+
+db.cloudAccounts.hook('reading', (obj) => {
+  // 返回 Promise，Dexie 在读取后自动解密
+  const record = obj as unknown as Record<string, unknown>;
+  return Promise.all(
+    ENCRYPTABLE_FIELDS.map(async (field) => {
+      const val = record[field];
+      if (isEncryptedField(val)) {
+        record[field] = await decryptSecret(val);
+      }
+    })
+  ).then(() => obj);
+});
 
 export async function seedDatabase() {
   const count = await db.folders.count();

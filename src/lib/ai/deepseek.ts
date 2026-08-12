@@ -2,8 +2,10 @@
  * DeepSeek API 调用客户端
  * 
  * 支持自动标签、内容摘要、知识库语义搜索
- * API 密钥存储在用户设置中 (localStorage)
+ * API 密钥存储在用户设置中 (localStorage)，加密保存
  */
+
+import { decryptSecret, isEncryptedField } from '../crypto/secure-store';
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1';
 
@@ -23,25 +25,41 @@ interface ChatCompletionResponse {
 }
 
 /**
- * 获取存储的 API 密钥
+ * 获取存储的 API 密钥（异步解密）
  */
-function getApiKey(): string | null {
+async function getApiKey(): Promise<string | null> {
   try {
     const raw = localStorage.getItem('memoflow-store');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    const key: string | undefined = parsed?.state?.settings?.deepseekApiKey;
-    return key && key.trim().length > 0 ? key.trim() : null;
+    const key = parsed?.state?.settings?.deepseekApiKey;
+    if (!key) return null;
+    // 处理加密字段（Persist 中间件写入时加密，但 deepseek 直接读 localStorage 可能拿到密文）
+    if (typeof key === 'object' && isEncryptedField(key)) {
+      return await decryptSecret(key);
+    }
+    return typeof key === 'string' && key.trim().length > 0 ? key.trim() : null;
   } catch {
     return null;
   }
 }
 
 /**
- * 检查 API 密钥是否已配置
+ * 检查 API 密钥是否已配置（同步，仅检测是否存在，不解密）
  */
 export function hasApiKey(): boolean {
-  return getApiKey() !== null;
+  try {
+    const raw = localStorage.getItem('memoflow-store');
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const key = parsed?.state?.settings?.deepseekApiKey;
+    if (!key) return false;
+    // 支持明文和加密两种格式
+    if (typeof key === 'object' && key?.data && key?.iv) return true;
+    return typeof key === 'string' && key.trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -51,7 +69,7 @@ export async function callDeepSeek(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number }
 ): Promise<string> {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY_MISSING');
   }

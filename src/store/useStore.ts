@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AppSettings, ViewMode, ResolvedTheme } from '../types';
+import { encryptSecret, decryptSecret, isEncryptedField } from '../lib/crypto/secure-store';
 
 // 检测系统深浅模式
 function getSystemTheme(): ResolvedTheme {
@@ -92,6 +93,41 @@ const defaultSettings: AppSettings = {
   homeStatOrder: ['allNotes', 'pinned', 'folders', 'clouds'],
   collapsedSections: [],
   statIconColor: 'default',
+};
+
+// ── 加密持久化存储 ──────────────────────────────────
+// 对 deepseekApiKey 进行透明加密：写入 localStorage 时自动加密，读取时自动解密
+// 运行时 store 中始终为明文，磁盘上仅存密文
+const encryptedLocalStorage = {
+  getItem: async (name: string): Promise<string | null> => {
+    const raw = localStorage.getItem(name);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      const key = parsed?.state?.settings?.deepseekApiKey;
+      if (key && typeof key === 'object' && isEncryptedField(key)) {
+        const decrypted = await decryptSecret(key);
+        parsed.state.settings.deepseekApiKey = decrypted;
+        return JSON.stringify(parsed);
+      }
+    } catch { /* 不是有效的 JSON 或加密字段，原样返回 */ }
+    return raw;
+  },
+  setItem: async (name: string, value: string): Promise<void> => {
+    try {
+      const parsed = JSON.parse(value);
+      const key = parsed?.state?.settings?.deepseekApiKey;
+      if (key && typeof key === 'string' && key.length > 0) {
+        parsed.state.settings.deepseekApiKey = await encryptSecret(key);
+        localStorage.setItem(name, JSON.stringify(parsed));
+        return;
+      }
+    } catch { /* 加密失败，回退到明文存储 */ }
+    localStorage.setItem(name, value);
+  },
+  removeItem: (name: string): void => {
+    localStorage.removeItem(name);
+  },
 };
 
 export const useStore = create<AppState>()(
@@ -220,6 +256,7 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'memoflow-store',
+      storage: encryptedLocalStorage,
       version: 12,
       // 仅持久化设置、主题和最近访问记录，不持久化运行时导航状态
       partialize: (s) => ({

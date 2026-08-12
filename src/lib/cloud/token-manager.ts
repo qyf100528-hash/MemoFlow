@@ -38,12 +38,15 @@ export async function refreshAccountToken(account: CloudAccount): Promise<CloudA
   const updatedAccount: CloudAccount = {
     ...account,
     accessToken: result.accessToken,
+    // 部分服务商会轮换 refresh_token（如 Google），回写新值
+    refreshToken: result.refreshToken || account.refreshToken,
     expiresAt: Date.now() + result.expiresIn * 1000,
   };
 
   // 更新 IndexedDB
   await db.cloudAccounts.update(account.id, {
     accessToken: result.accessToken,
+    refreshToken: updatedAccount.refreshToken,
     expiresAt: updatedAccount.expiresAt,
   });
 
@@ -62,7 +65,7 @@ export async function ensureValidToken(account: CloudAccount): Promise<CloudAcco
 
   console.log(`[TokenManager] ${account.displayName} Token 即将过期，正在刷新...`);
   try {
-    const updated = await refreshAccountToken(account);
+    const updated = await refreshAccountTokenOnce(account);
     console.log(`[TokenManager] ${account.displayName} Token 刷新成功`);
     return updated;
   } catch (err) {
@@ -105,7 +108,7 @@ export async function withRefresh<T>(
     console.log(`[TokenManager] ${account.displayName} API 调用返回 401，尝试刷新 Token 后重试...`);
 
     try {
-      const refreshedAccount = await refreshAccountToken(validAccount);
+      const refreshedAccount = await refreshAccountTokenOnce(validAccount);
       const result = await fn(refreshedAccount);
       return { result, account: refreshedAccount };
     } catch (retryErr) {
@@ -127,20 +130,37 @@ export async function getConnectedAccounts(): Promise<CloudAccount[]> {
  * 返回：{ refreshed: number; failed: number }
  */
 export async function refreshAllExpiredTokens(): Promise<{ refreshed: number; failed: number }> {
-  const accounts = await getConnectedAccounts();
+  const cutoff = Date.now() + REFRESH_THRESHOLD_MS;
+  // 利用 expiresAt 索引，仅取即将过期的账户，避免全表扫描
+  const accounts = await db.cloudAccounts
+    .where('expiresAt')
+    .below(cutoff)
+    .toArray();
   let refreshed = 0;
   let failed = 0;
 
   for (const account of accounts) {
-    if (isTokenExpired(account)) {
-      try {
-        await refreshAccountToken(account);
-        refreshed++;
-      } catch {
-        failed++;
-      }
+    try {
+      await refreshAccountToken(account);
+      refreshed++;
+    } catch {
+      failed++;
     }
   }
 
   return { refreshed, failed };
+}
+
+// 并发刷新去重：同一账户同时被多处触发刷新时，共享同一个 in-flight Promise
+const refreshInFlight = new Map<string, Promise<CloudAccount>>();
+
+export async function refreshAccountTokenOnce(account: CloudAccount): Promise<CloudAccount> {
+  const existing = refreshInFlight.get(account.id);
+  if (existing) return existing;
+
+  const promise = refreshAccountToken(account).finally(() => {
+    refreshInFlight.delete(account.id);
+  });
+  refreshInFlight.set(account.id, promise);
+  return promise;
 }

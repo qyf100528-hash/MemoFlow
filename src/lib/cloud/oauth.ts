@@ -66,6 +66,7 @@ interface OAuthConfig {
   authorizationUrl: string;
   tokenUrl: string;
   clientId: string;
+  clientSecret?: string;
   redirectUri: string;
   scopes: string[];
   extraParams?: Record<string, string>;
@@ -194,7 +195,7 @@ export async function handleOAuthCallback(provider: string, url: string): Promis
 /**
  * 刷新访问令牌
  */
-export async function refreshToken(provider: string, refreshToken: string): Promise<{ accessToken: string; expiresIn: number }> {
+export async function refreshToken(provider: string, refreshToken: string): Promise<{ accessToken: string; refreshToken?: string; expiresIn: number }> {
   const config = OAUTH_CONFIGS[provider];
   if (!config) throw new Error(`不支持的提供商: ${provider}`);
 
@@ -203,6 +204,10 @@ export async function refreshToken(provider: string, refreshToken: string): Prom
     refresh_token: refreshToken,
     client_id: config.clientId,
   });
+  // 部分提供商（百度、Google）需要 client_secret 才能刷新
+  if (config.clientSecret) {
+    params.set('client_secret', config.clientSecret);
+  }
 
   const response = await fetch(config.tokenUrl, {
     method: 'POST',
@@ -217,6 +222,8 @@ export async function refreshToken(provider: string, refreshToken: string): Prom
   const data = await response.json();
   return {
     accessToken: data.access_token,
+    // 服务商轮换 refresh_token 时回传新值
+    refreshToken: data.refresh_token || undefined,
     expiresIn: data.expires_in || 3600,
   };
 }

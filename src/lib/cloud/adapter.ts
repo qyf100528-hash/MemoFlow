@@ -4,6 +4,7 @@ import { GoogleAdapter } from './google-adapter';
 import { QuarkAdapter } from './quark-adapter';
 import { OneDriveAdapter } from './onedrive-adapter';
 import { withRefresh } from './token-manager';
+import { enqueueRetry } from './sync-queue';
 
 export interface CloudAdapter {
   provider: CloudProvider;
@@ -83,24 +84,22 @@ export function getAdapter(provider: CloudProvider): CloudAdapter {
   return createRefreshAwareAdapter(adapter);
 }
 
-// 同步笔记到云端
-export async function syncNoteToCloud(account: CloudAccount, note: Note, format: ExportFormat = 'json'): Promise<void> {
-  const adapter = getAdapter(account.provider);
-  const data = formatNoteForExport(note, format);
-  const path = `notes/${note.id}.${format === 'markdown' ? 'md' : format}`;
-  await withRefresh(account, (acc) => adapter.upload(acc, path, data));
-}
-
-// 批量同步
+// 批量同步：失败项自动进入重试队列
 export async function syncAllNotes(account: CloudAccount, notes: Note[]): Promise<{ success: number; failed: number }> {
+  const adapter = getAdapter(account.provider);
   let success = 0;
   let failed = 0;
   for (const note of notes) {
+    const data = formatNoteForExport(note, 'json');
+    const path = `notes/${note.id}.json`;
     try {
-      await syncNoteToCloud(account, note);
+      await adapter.upload(account, path, data);
       success++;
     } catch (err) {
-      console.error(`[Sync] 笔记同步失败:`, err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Sync] 笔记同步失败，已入队待重试: ${note.title}`, err);
+      // 将失败项入队，等待指数退避重试
+      await enqueueRetry(account, 'update', path, await data.text(), note.id, msg);
       failed++;
     }
   }

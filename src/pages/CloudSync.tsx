@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Cloud, Check, Plus, RefreshCw, Settings as SettingsIcon, Trash2, Upload, AlertCircle } from 'lucide-react';
+import { Cloud, Check, Plus, RefreshCw, Settings as SettingsIcon, Trash2, Upload, AlertCircle, X } from 'lucide-react';
 import { db, ensureCloudFolder } from '../lib/db';
 import { cloudProviders, getAdapter, syncAllNotes } from '../lib/cloud/adapter';
+import { processRetryQueue } from '../lib/cloud/sync-queue';
 import type { CloudProvider, CloudAccount } from '../types';
 
 export function CloudSync() {
   const accounts = useLiveQuery(() => db.cloudAccounts.toArray(), []);
   const [connecting, setConnecting] = useState<CloudProvider | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
-  const [syncResult, setSyncResult] = useState<{ id: string; success: number; failed: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ id: string; success: number; failed: number; retried: number } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleConnect = async (provider: CloudProvider) => {
     setConnecting(provider);
+    setErrorMsg(null);
     try {
       const adapter = getAdapter(provider);
       const account = await adapter.connect({ apiKey: 'demo-key' });
@@ -21,6 +24,7 @@ export function CloudSync() {
       await ensureCloudFolder(provider);
     } catch (e) {
       console.error('连接失败:', e);
+      setErrorMsg(`连接 ${cloudProviders[provider].name} 失败: ${e instanceof Error ? e.message : String(e)}`);
     }
     setConnecting(null);
   };
@@ -33,15 +37,19 @@ export function CloudSync() {
 
   const handleSync = async (account: CloudAccount) => {
     setSyncing(account.id);
+    setErrorMsg(null);
     try {
       const notes = await db.notes.toArray();
       const result = await syncAllNotes(account, notes);
-      setSyncResult({ id: account.id, ...result });
+      // 同步结束后，处理此前失败并已入队的重试任务
+      const retried = await processRetryQueue(account);
+      setSyncResult({ id: account.id, ...result, retried });
       await db.cloudAccounts.update(account.id, { lastSyncAt: Date.now() });
       // 更新笔记同步状态
       await db.notes.toCollection().modify({ syncStatus: 'synced' });
     } catch (e) {
       console.error('同步失败:', e);
+      setErrorMsg(`同步失败: ${e instanceof Error ? e.message : String(e)}`);
     }
     setSyncing(null);
   };
@@ -55,6 +63,30 @@ export function CloudSync() {
         <h1 className="typo-title mb-1 sm:mb-2">云同步中心</h1>
         <p className="typo-body">连接你的网盘，让笔记自由流动</p>
       </div>
+
+      {/* 错误提示 */}
+      <AnimatePresence>
+        {errorMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            className="glass-card p-3 sm:p-4 mb-4 flex items-start gap-2.5 border border-red-500/30"
+          >
+            <AlertCircle size={18} className="text-[#ef4444] shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="typo-body text-[#ef4444] break-all">{errorMsg}</p>
+            </div>
+            <button
+              onClick={() => setErrorMsg(null)}
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
+              aria-label="关闭"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 已连接的网盘 */}
       {accounts && accounts.length > 0 && (
@@ -131,6 +163,9 @@ export function CloudSync() {
                         <div className="flex items-center gap-2 text-sm">
                           <Check size={16} className="text-[#22c55e]" />
                           <span className="typo-label">同步完成: 成功 {syncResult.success} 条, 失败 {syncResult.failed} 条</span>
+                          {syncResult.retried > 0 && (
+                            <span className="typo-meta">, 自动重试成功 {syncResult.retried} 条</span>
+                          )}
                         </div>
                       </motion.div>
                     )}

@@ -85,6 +85,21 @@ export interface SyncLog {
   message?: string;
 }
 
+// 云同步失败重试队列项（独立于审计日志，字段完整落库以便真正重试）
+export interface SyncQueueItem {
+  id: string;
+  accountId: string;
+  provider: CloudProvider;
+  action: 'create' | 'update' | 'delete';
+  path: string;
+  data?: string;
+  noteId?: string;
+  retries: number;
+  lastError?: string;
+  nextRetryAt: number;
+  createdAt: number;
+}
+
 export interface NoteTemplate {
   id: string;
   name: string;
