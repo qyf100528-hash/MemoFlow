@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, X, Database, Tag as TagIcon, Folder as FolderIcon, Trash2, MoreHorizontal, FileDown } from 'lucide-react';
+import { Grid, List, Kanban, Clock, Plus, SearchX, CloudOff, CheckSquare, X, Database, Tag as TagIcon, Folder as FolderIcon, Trash2, MoreHorizontal, FileDown, ArrowLeftRight, Pin } from 'lucide-react';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
 import { NoteCard } from '../components/notes/NoteCard';
@@ -122,6 +122,19 @@ export function Notes() {
     }
   };
 
+  // 反选: 将已选切换为未选，将未选切换为已选
+  const invertSelection = () => {
+    if (!notes) return;
+    setSelectedIds(prev => {
+      const next = new Set<string>();
+      for (const n of notes) {
+        if (!prev.has(n.id)) next.add(n.id);
+      }
+      haptic(20);
+      return next;
+    });
+  };
+
   const exitSelectMode = () => {
     setSelectMode(false);
     setSelectedIds(new Set());
@@ -234,6 +247,19 @@ export function Notes() {
     });
   };
 
+  // 批量置顶 / 取消置顶
+  const handleBatchPin = (pinned: boolean) => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    db.transaction('rw', db.notes, async () => {
+      for (const id of ids) {
+        await db.notes.update(id, { isPinned: pinned, updatedAt: Date.now() });
+      }
+    }).then(() => {
+      showToast('success', `${pinned ? '已置顶' : '已取消置顶'} ${ids.length} 条笔记`);
+    });
+  };
+
   // 检测是否选择了未连接的网盘文件夹
   const isCloudFolder = selectedFolderId?.startsWith('folder-cloud-');
   const cloudProvider = isCloudFolder ? selectedFolderId!.replace('folder-cloud-', '') : null;
@@ -291,7 +317,7 @@ export function Notes() {
           <p className="typo-meta mt-1">{selectMode ? `已选 ${selectedIds.size} / ${notes?.length || 0}` : `${notes?.length || 0} 条笔记`}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* 多选模式工具栏 — 极简顶部：仅全选 + 取消 */}
+          {/* 多选模式工具栏 — 极简顶部：仅全选/反选 + 取消 */}
           {selectMode && (
             <>
               <button
@@ -308,6 +334,14 @@ export function Notes() {
                 title="全选/取消全选"
               >
                 <CheckSquare size={15} /> 全选
+              </button>
+              <button
+                onClick={invertSelection}
+                disabled={!notes || notes.length === 0}
+                className="icon-press w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-40"
+                title="反选"
+              >
+                <ArrowLeftRight size={15} />
               </button>
               <button
                 onClick={exitSelectMode}
@@ -529,14 +563,35 @@ export function Notes() {
           >
             <div className="ios-glass border-t border-[var(--glass-border)] px-3 sm:px-6 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
               <div className="max-w-3xl mx-auto flex items-center gap-2 sm:gap-3">
-                {/* 已选数量 — 展示当前进度 */}
+                {/* 已选数量徽章 — 数字翻转动画 */}
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl shrink-0" style={{ color: 'var(--accent-mint)' }}>
                   <CheckSquare size={14} />
-                  <span className="typo-label">{selectedIds.size}</span>
+                  <span className="typo-label relative inline-block min-w-[1.2em] text-center overflow-hidden">
+                    <AnimatePresence mode="popLayout">
+                      <motion.span
+                        key={selectedIds.size}
+                        initial={{ y: -16, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 16, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+                        className="inline-block"
+                      >
+                        {selectedIds.size}
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
                 </div>
 
                 {/* 主操作按钮 */}
                 <div className="flex-1 flex items-center justify-end gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+                  <button
+                    onClick={() => handleBatchPin(true)}
+                    disabled={selectedIds.size === 0}
+                    className="icon-press glass h-10 px-3.5 rounded-xl flex items-center gap-2 text-sm shrink-0 disabled:opacity-40 text-[var(--text-primary)] hover:text-[var(--accent-mint)]"
+                    title="批量置顶"
+                  >
+                    <Pin size={15} /> <span className="hidden sm:inline">置顶</span>
+                  </button>
                   <button
                     onClick={() => setShowTagPickerSheet(true)}
                     disabled={selectedIds.size === 0}
