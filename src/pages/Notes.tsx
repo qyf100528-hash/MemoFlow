@@ -400,10 +400,10 @@ export function Notes() {
               <button
                 onClick={invertSelection}
                 disabled={!notes || notes.length === 0}
-                className="ios-glass-btn w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-secondary)] shrink-0 disabled:opacity-40"
+                className="icon-press glass px-3 h-9 rounded-xl flex items-center gap-2 text-sm shrink-0 disabled:opacity-40 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title="反选"
               >
-                <ArrowLeftRight size={15} />
+                <ArrowLeftRight size={15} /> 反选
               </button>
             </>
           ) : (
